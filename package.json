@@ -1,0 +1,14 @@
+{
+  "name": "customer-onboarding-dev",
+  "private": true,
+  "scripts": {
+    "setup": "node setup.mjs",
+    "dev": "npm run setup && concurrently -k -n backend,frontend -c blue,magenta \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "nodemon --watch supplier-portal-backend --ext py --ignore \"supplier-portal-backend/.venv/**\" --signal SIGTERM --exec \"node setup.mjs --run-backend\"",
+    "dev:frontend": "npm --prefix supplier-portal-frontend run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "nodemon": "^3.1.10"
+  }
+}

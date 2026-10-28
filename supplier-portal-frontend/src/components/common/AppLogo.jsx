@@ -1,11 +1,12 @@
 import { Link } from 'react-router-dom'
 
-// The brand: the mark in a bordered tile, the product name and its subtitle (the LAS navbar brand).
+// The brand: the mark in a bordered tile, the product name and its subtitle (the LAS navbar brand). `compact` (the
+// navbar) keeps only the mark on the narrowest phones, so the name never runs under the header's buttons.
 export default function AppLogo({ light = false, compact = false, to = '/' }) {
   return (
     <Link
       to={to}
-      className="inline-flex min-h-11 items-center gap-3 rounded-lg focus-visible:outline-none"
+      className="inline-flex min-h-11 min-w-11 items-center gap-3 rounded-lg focus-visible:outline-none"
       aria-label="Customer Onboarding home"
     >
       <span className={`grid shrink-0 place-items-center rounded-lg border bg-white ${light ? 'border-white/20' : 'border-[#d8e0e9]'} ${compact ? 'size-[38px]' : 'size-11'}`}>
@@ -16,7 +17,7 @@ export default function AppLogo({ light = false, compact = false, to = '/' }) {
           <circle cx="17" cy="39" r="4" fill="#626970" />
         </svg>
       </span>
-      <span>
+      <span className={compact ? 'max-[419px]:sr-only' : ''}>
         <span className={`block whitespace-nowrap text-[15px] font-bold leading-tight tracking-[-0.01em] ${light ? 'text-white' : 'text-black'}`}>
           Customer Central
         </span>

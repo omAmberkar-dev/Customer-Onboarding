@@ -1,6 +1,7 @@
 import { joinPhone, splitPhone } from '../data/countryCodes'
 import { aadhaarDigits, formatAadhaar } from '../utils/formatters'
 import { dematText } from '../utils/demat'
+import { customerTypeOf } from '../data/vendorTypes'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 // Deployed shared-services API (GSTIN verification, invoice preview links; email and OCR are called by the backend).
@@ -409,7 +410,7 @@ export function toFormValues(vendor) {
     vendorPhoneCode: code,
     vendorPhone: number,
     vendorLegalName: text(vendor.vendor_legal_name),
-    vendorType: text(vendor.vendor_type),
+    vendorType: customerTypeOf(vendor.vendor_type),
     yearEstablished: text(vendor.year_established),
     currency: text(vendor.currency) || 'INR',
     registrationNumber: text(vendor.registration_number),
@@ -546,16 +547,20 @@ export async function fetchAgreementPdfUrl(id) {
   return URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
 }
 
-export async function downloadAgreement(id, agreementNo) {
-  const blob = await agreementPdfBlob(id, true)
+// Saves a PDF Blob under `fileName` through a temporary link.
+function savePdf(blob, fileName) {
   const url = URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
   const link = document.createElement('a')
   link.href = url
-  link.download = `${agreementNo || `agreement-${id}`}.pdf`
+  link.download = fileName
   document.body.appendChild(link)
   link.click()
   link.remove()
   setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
+export async function downloadAgreement(id, agreementNo) {
+  savePdf(await agreementPdfBlob(id, true), `${agreementNo || `agreement-${id}`}.pdf`)
 }
 
 // The agreement as it will look once signed, built from what is filled in so far (nothing is saved). `final` adds the
@@ -611,3 +616,30 @@ export const cancelRenewal = () => agreementCall('/vendors/me/renewal-request', 
 
 // The agreement PDF as a Blob (the reading view makes its own blob: URL and reads the page count from it).
 export const fetchAgreementPdfBlob = (id) => agreementPdfBlob(id, false)
+
+// ---- My loans -------------------------------------------------------------------------------------------------------
+// The customer's loan journey as LAS carries it out (the backend reads it from LAS): steps, sanctions, drawdowns and
+// invoices. Before onboarding is approved it is an empty journey ({ onboarded: false }).
+export const getMyLoans = () => agreementCall('/vendors/me/loans', undefined, 'Unable to load your loans. Please try again.')
+
+// A Sanction Memo, Drawdown Memo or invoice PDF (kind 'sanction', 'drawdown' or 'invoice') as a Blob.
+async function loanDocumentBlob(kind, id) {
+  let response
+  try {
+    response = await authFetch(`/vendors/me/loans/documents/${kind}/${encodeURIComponent(id)}`)
+  } catch {
+    throw new Error('Unable to load the document. Please try again.')
+  }
+  if (!response.ok) throw await agreementError(response, 'Unable to load the document. Please try again.')
+  return response.blob()
+}
+
+// A blob: URL for the document (the caller revokes it with URL.revokeObjectURL when done).
+export async function fetchLoanDocumentUrl(kind, id) {
+  const blob = await loanDocumentBlob(kind, id)
+  return URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }))
+}
+
+export async function downloadLoanDocument(kind, id, fileName) {
+  savePdf(await loanDocumentBlob(kind, id), fileName)
+}

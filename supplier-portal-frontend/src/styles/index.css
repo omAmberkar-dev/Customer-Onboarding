@@ -114,6 +114,11 @@ button:not(:disabled), a, select:not(:disabled), input[type="checkbox"]:not(:dis
   .interactive-icon:hover { background: #f1f4f8; color: #052e86; }
 }
 
+/* Phones: icon buttons get a full 44px tap target. */
+@media (max-width: 720px) {
+  .interactive-icon { min-width: 2.75rem; min-height: 2.75rem; }
+}
+
 @media (min-width: 721px) {
   .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .form-grid .wide { grid-column: span 2; }

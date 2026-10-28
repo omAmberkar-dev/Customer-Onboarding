@@ -27,7 +27,7 @@ import { FORM_STEPS, PAN_TAKEN_MESSAGE, STEP_FIELDS } from '../utils/constants'
 import { KEY_BY_FORM_FIELD, buildFlags, stepOfFlag } from '../utils/rejectionFields'
 import { STAGES } from '../utils/stages'
 import { isValidPhone } from '../data/countryCodes'
-import { isCompanyType } from '../data/vendorTypes'
+import { cinApplies } from '../data/vendorTypes'
 import { FlagsContext } from '../context/flags-context'
 import useAutosave from '../hooks/useAutosave'
 import { checkPanExists, deleteMyDocument, getMyDocuments, saveOnboardingDraft, submitOnboarding, uploadVendorDocuments } from '../api/vendorApi'
@@ -101,12 +101,12 @@ export default function VendorRequestPage() {
   const demat = useDematVerification(form)
   const contactReady = isValidPhone(values.vendorPhoneCode, values.vendorPhone)
 
-  // CIN is only for incorporated entities: one left over from a vendor type the vendor has since changed is dropped, unless the
-  // reviewer flagged it (then the field stays and the vendor can fix it).
+  // A registered MSME gives no CIN: one left over from before the MSME status changed is dropped, unless the reviewer flagged it
+  // (then the field stays and the vendor can fix it).
   useEffect(() => {
-    if (values.cin && !isCompanyType(values.vendorType) && !flagDefs.fields.cin) setValue('cin', '', { shouldDirty: true })
+    if (values.cin && !cinApplies(values.msmeStatus) && !flagDefs.fields.cin) setValue('cin', '', { shouldDirty: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [values.vendorType])
+  }, [values.msmeStatus])
   const currentFields = STEP_FIELDS[step - 1] || []
   const errorCount = currentFields.filter((name) => errors[name]).length
   const declarationsComplete = values.accurateDeclaration && values.termsDeclaration

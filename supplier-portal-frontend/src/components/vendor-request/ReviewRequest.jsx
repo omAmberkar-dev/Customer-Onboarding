@@ -8,11 +8,11 @@ import { documentTypes } from '../../data/documentTypes'
 import { newDocumentId, uploadedDocumentId } from '../../utils/documentPreview'
 import { displayValue, maskAadhaar, maskAccountNumber } from '../../utils/formatters'
 import TermsPolicyModal from './TermsPolicyModal'
-import { isCompanyType } from '../../data/vendorTypes'
+import { cinApplies } from '../../data/vendorTypes'
 
-// Udyam applies to a registered MSME, CIN to an incorporated entity (or one that already has a value): no empty rows for the rest.
+// Udyam applies to a registered MSME, CIN to every other (or one that already has a value): no empty rows for the rest.
 const appliesToVendor = (key, values) =>
-  (key !== 'udyamNumber' || values.msmeStatus === 'Registered') && (key !== 'cin' || isCompanyType(values.vendorType) || Boolean(values.cin))
+  (key !== 'udyamNumber' || values.msmeStatus === 'Registered') && (key !== 'cin' || cinApplies(values.msmeStatus) || Boolean(values.cin))
 
 const sections = [
   {
@@ -23,7 +23,7 @@ const sections = [
       ['GSTIN', 'gstin'], ['Legal name', 'vendorLegalName'], ['PAN / Tax ID', 'pan'], ['Aadhaar number', 'aadhaar', 'aadhaar'],
       ['Phone number', 'vendorPhone'], ['Email address', 'vendorEmail'], ['Customer type', 'vendorType'],
       ['Currency', 'currency'],
-      ['Registration no.', 'registrationNumber'], ['MSME status', 'msmeStatus'], ['Relationship manager', 'assignedRm'], ['Udyam no.', 'udyamNumber'],
+      ['Registration no.', 'registrationNumber'], ['MSME status', 'msmeStatus'], ['CIN', 'cin'], ['Relationship manager', 'assignedRm'], ['Udyam no.', 'udyamNumber'],
     ],
   },
   {
@@ -37,7 +37,7 @@ const sections = [
     step: 2,
     fields: [
       ['Address', 'registeredAddress1'], ['District', 'registeredDistrict'], ['City', 'registeredCity'],
-      ['State', 'registeredState'], ['Postal code', 'registeredPostalCode'], ['CIN', 'cin'],
+      ['State', 'registeredState'], ['Postal code', 'registeredPostalCode'],
     ],
   },
   {

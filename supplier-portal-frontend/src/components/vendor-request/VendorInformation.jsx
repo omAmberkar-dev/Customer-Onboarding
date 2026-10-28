@@ -12,6 +12,7 @@ import { PIN_PATTERN } from '../../hooks/usePincodeAutofill'
 import { useFlag } from '../../context/flags-context'
 import { PAN_TAKEN_MESSAGE } from '../../utils/constants'
 import { indianStates } from '../../data/mockData'
+import { VENDOR_TYPES, cinApplies } from '../../data/vendorTypes'
 
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
@@ -20,6 +21,8 @@ export default function VendorInformation({ register, errors, watch, setValue, s
   const msmeStatus = watch('msmeStatus')
   // An Udyam number the reviewer flagged must be editable whatever the MSME status currently says.
   const udyamFlagged = Boolean(useFlag('udyamNumber'))
+  // CIN follows the MSME status (asked for unless registered), and stays editable whatever it says once the reviewer flagged it.
+  const cinFlagged = Boolean(useFlag('cin'))
   const pan = watch('pan')?.trim().toUpperCase() || ''
   const gstin = watch('gstin')?.trim().toUpperCase() || ''
   const aadhaarFilled = Boolean(watch('aadhaar')?.replace(/\D/g, ''))
@@ -183,7 +186,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
       )}
       {/* A disabled fieldset disables every native control inside it, including the custom selects. */}
       {/* Three columns from tablet width up, so the rows read: GSTIN + legal name / PAN, Aadhaar, registration no. /
-          type, year, currency / MSME, Udyam, relationship manager. */}
+          type, year, currency / MSME, CIN or Udyam, relationship manager. */}
       <fieldset disabled={disabled} className={`grid min-w-0 gap-x-3.5 gap-y-2.5 transition-opacity md:grid-cols-3 ${disabled ? 'opacity-50' : ''}`}>
         <Input
           label="GSTIN"
@@ -247,7 +250,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           watch={watch}
           setValue={setValue}
           error={errors.vendorType}
-          options={['Individual', 'Proprietorship', 'Partnership', 'Private limited company', 'Public limited company', 'Government entity', 'Other']}
+          options={VENDOR_TYPES}
           required
         />
         <Input
@@ -278,6 +281,18 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           options={['Registered', 'Not registered', 'Not applicable']}
           required
         />
+        {(cinApplies(msmeStatus) || cinFlagged) && (
+          <Input
+            label="CIN"
+            name="cin"
+            maxLength={21}
+            register={register}
+            error={errors.cin}
+            style={{ textTransform: 'uppercase' }}
+            hint="21-character corporate identification number"
+            required={cinApplies(msmeStatus)}
+          />
+        )}
         {(msmeStatus === 'Registered' || udyamFlagged) && (
           <Input
             label="MSME / Udyam registration number"

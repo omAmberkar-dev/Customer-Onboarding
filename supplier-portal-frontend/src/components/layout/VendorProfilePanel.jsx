@@ -9,7 +9,7 @@ import EditDetailsModal from './EditDetailsModal'
 import DocumentPreview from '../vendor-request/DocumentPreview'
 import { documentPreviewItems, uploadedDocumentId } from '../../utils/documentPreview'
 import { displayProfileValue, isRegisteredMsme, sections } from './profileFields'
-import { isCompanyType } from '../../data/vendorTypes'
+import { cinApplies } from '../../data/vendorTypes'
 import { documentTypes } from '../../data/documentTypes'
 import { OPEN_REQUEST_CHANGES_EVENT } from '../../utils/events'
 
@@ -140,7 +140,7 @@ export default function VendorProfilePanel({ open, onClose, profile, onProfileRe
                       <Icon size={15} className="text-brand-600" /> {title}
                     </h3>
                     <div className="mt-2.5 grid gap-x-3 gap-y-2.5 sm:grid-cols-2">
-                      {fields.filter(([key]) => (key !== 'udyam_number' || isRegisteredMsme(profile)) && (key !== 'cin' || isCompanyType(profile.vendor_type) || String(profile.cin ?? '').trim() !== '')).map(([key, label]) => (
+                      {fields.filter(([key]) => (key !== 'udyam_number' || isRegisteredMsme(profile)) && (key !== 'cin' || cinApplies(profile.msme_status) || String(profile.cin ?? '').trim() !== '')).map(([key, label]) => (
                         <div key={key} className={wideKeys.has(key) ? 'sm:col-span-2' : ''}>
                           <p className="block text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-500">{label}</p>
                           <p className="mt-0.5 min-h-5 break-words text-[13px] font-semibold text-navy-900">{displayProfileValue(key, profile[key]) || '—'}</p>

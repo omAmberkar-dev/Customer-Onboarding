@@ -5,7 +5,7 @@ import { getMyDocuments } from '../../api/vendorApi'
 import { documentPreviewItems } from '../../utils/documentPreview'
 import DocumentPreview from '../vendor-request/DocumentPreview'
 import { displayProfileValue, isRegisteredMsme, sections } from '../layout/profileFields'
-import { isCompanyType } from '../../data/vendorTypes'
+import { cinApplies } from '../../data/vendorTypes'
 
 const wideKeys = new Set(['vendor_legal_name', 'street', 'account_holder_name'])
 
@@ -40,7 +40,7 @@ export default function DetailsReview({ profile, updateInfo = null }) {
             <Icon size={13} className="text-brand-600" /> {title}
           </h3>
           <div className="grid grid-cols-1 gap-x-4 gap-y-1.5 px-3 py-2 sm:grid-cols-2 lg:grid-cols-4">
-            {fields.filter(([key]) => (key !== 'udyam_number' || isRegisteredMsme(profile)) && (key !== 'cin' || isCompanyType(profile?.vendor_type) || String(profile?.cin ?? '').trim() !== '')).map(([key, label]) => (
+            {fields.filter(([key]) => (key !== 'udyam_number' || isRegisteredMsme(profile)) && (key !== 'cin' || cinApplies(profile?.msme_status) || String(profile?.cin ?? '').trim() !== '')).map(([key, label]) => (
               <div key={key} className={`min-w-0 ${wideKeys.has(key) ? 'sm:col-span-2 lg:col-span-4' : ''}`}>
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase leading-4 tracking-[0.03em] text-slate-500">
                   {label}

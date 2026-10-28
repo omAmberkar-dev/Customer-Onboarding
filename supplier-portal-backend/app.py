@@ -20,6 +20,7 @@ from mysql.connector import Error as MySQLError
 import agreement_hold
 import agreements
 import auth
+import customer_journey
 import demat
 import invoice_versions
 import las_integration
@@ -138,15 +139,14 @@ REQUIRED_FIELDS = [
 MSME_STATUSES = {"Registered", "Not registered", "Not applicable"}
 # Relationship managers a vendor can be assigned to (the same list as the portal's "Assigned RM" dropdown).
 ASSIGNED_RMS = {"Priya Nair", "Arjun Verma", "Kavita Rao"}
-VENDOR_TYPES = {
-    "Individual",
-    "Proprietorship",
-    "Partnership",
-    "Private limited company",
-    "Public limited company",
-    "Government entity",
-    "Other",
-}
+# Customer types (2026-10-28). A customer onboarded earlier may still hold an older type ("Private limited company"); it is only
+# checked when it is changed, so that record is not blocked by itself.
+VENDOR_TYPES = {"Individual", "Organization"}
+
+
+def cin_applies(msme_status):
+    """The CIN is asked for, and required, unless the customer is a registered MSME (2026-10-28)."""
+    return msme_status != "Registered"
 
 
 def _clean_tax_id(value):
@@ -206,18 +206,21 @@ def _validate_vendor_values(values, existing=None, draft=False):
     """Return an error message for invalid vendor data, or None.
 
     `draft`: saving progress, not submitting. Only what would break the database is refused (the CIN / Udyam lengths); the business
-    rules (required, allowed values, Udyam when registered) are enforced when the application is submitted.
+    rules (required, allowed values, Udyam when registered, CIN when not) are enforced when the application is submitted.
 
     `values` holds the fields being written; `existing` is the stored row (PATCH)
     so cross-field rules can see the final state.
     """
+    def changed(field):
+        return field in values and str(values[field] or "").strip() != str((existing or {}).get(field) or "").strip()
+
     for field in REQUIRED_FIELDS:
         if not draft and field in values and not str(values[field] or "").strip():
             return f"{field} cannot be empty"
 
     if not draft and values.get("msme_status") and values["msme_status"] not in MSME_STATUSES:
         return "msme_status must be one of: " + ", ".join(sorted(MSME_STATUSES))
-    if not draft and values.get("vendor_type") and values["vendor_type"] not in VENDOR_TYPES:
+    if not draft and values.get("vendor_type") and values["vendor_type"] not in VENDOR_TYPES and (existing is None or changed("vendor_type")):
         return "vendor_type is not a recognised value"
     if not draft and values.get("assigned_rm") and values["assigned_rm"] not in ASSIGNED_RMS:
         return "assigned_rm is not a recognised value"
@@ -225,8 +228,11 @@ def _validate_vendor_values(values, existing=None, draft=False):
     final = {**(existing or {}), **values}
     if not draft and final.get("msme_status") == "Registered" and not str(final.get("udyam_number") or "").strip():
         return "udyam_number is required when msme_status is Registered"
-    # CIN is a 21-character code and the Udyam number column holds 30: anything else would only fail in the database.
     cin = str(final.get("cin") or "").strip()
+    # On a profile update only a changed MSME status or CIN is held to this, so an older record without a CIN can still update the rest.
+    if not draft and cin_applies(final.get("msme_status")) and not cin and (existing is None or changed("msme_status") or changed("cin")):
+        return "cin is required when msme_status is not Registered"
+    # CIN is a 21-character code and the Udyam number column holds 30: anything else would only fail in the database.
     if cin and not re.fullmatch(r"[A-Za-z0-9]{21}", cin):
         return "cin must be a 21-character CIN"
     if len(str(final.get("udyam_number") or "").strip()) > 30:
@@ -779,6 +785,8 @@ def _onboarding_values(data):
             values[field] = None
     if "msme_status" in values and values["msme_status"] != "Registered":
         values["udyam_number"] = None
+    if values.get("msme_status") == "Registered":
+        values["cin"] = None
     if isinstance(values.get("cin"), str):
         values["cin"] = values["cin"].upper()
     for field in demat.FIELDS:
@@ -1451,6 +1459,8 @@ def create_update_request():
     requested = {field: details[field] for field in PROFILE_FIELDS if field in details}
     if requested.get("msme_status") != "Registered" and "msme_status" in requested:
         requested["udyam_number"] = None
+    if requested.get("msme_status") == "Registered":
+        requested["cin"] = None
     validation_error = _validate_vendor_values(requested, vendor)
     if validation_error:
         return jsonify({"error": validation_error}), 400
@@ -2462,6 +2472,8 @@ las_integration.configure(
     document_response=lambda vendor_id, blob_name: _document_response(vendor_id, blob_name),
 )
 app.register_blueprint(las_integration.bp)
+# The customer's own loan journey, read from LAS (customer_journey.py).
+app.register_blueprint(customer_journey.bp)
 app.register_blueprint(invoice_versions.bp)
 app.register_blueprint(phone_verification.bp)
 

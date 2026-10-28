@@ -7,7 +7,7 @@ import PhoneField from '../common/PhoneField'
 import { joinPhone, phoneRuleFor, splitPhone } from '../../data/countryCodes'
 import usePincodeAutofill from '../../hooks/usePincodeAutofill'
 import { aadhaarDigits, maskAadhaarInput } from '../../utils/formatters'
-import { isCompanyType } from '../../data/vendorTypes'
+import { CIN_PATTERN, cinApplies } from '../../data/vendorTypes'
 import { LOCKED_KEYS, displayProfileValue, isRegisteredMsme, requiredKeys, sameValue, sections, toDraft, toUpdatePayload } from './profileFields'
 
 const fieldBox = 'mt-1 h-8 min-h-8 w-full rounded-md px-2.5 py-1 text-[13px] leading-5'
@@ -75,9 +75,14 @@ export default function EditDetailsModal({ open, profile, onClose, onSent }) {
     setValue('contact_no', joinPhone(code, number))
   }
 
-  // Only a phone or Aadhaar the vendor actually changed is checked, so an old record is never blocked by itself.
+  // Only a phone, Aadhaar, MSME status or CIN the vendor actually changed is checked, so an old record is never blocked by itself.
   const validate = () => {
     const problems = {}
+    const cin = String(draft.cin ?? '').trim()
+    if (cinApplies(draft.msme_status) && (changedKeys.has('msme_status') || changedKeys.has('cin'))) {
+      if (!cin) problems.cin = 'CIN is required'
+      else if (!CIN_PATTERN.test(cin)) problems.cin = 'Enter a valid 21-character CIN'
+    }
     if (changedKeys.has('contact_no') && !phoneRuleFor(phoneCode).pattern.test(phoneNumber)) problems.contact_no = phoneRuleFor(phoneCode).message
     if (changedKeys.has('aadhaar_no') && aadhaarDigits(draft.aadhaar_no) && !/^[2-9]\d{11}$/.test(aadhaarDigits(draft.aadhaar_no))) problems.aadhaar_no = 'Enter a valid 12-digit Aadhaar number'
     return problems
@@ -98,7 +103,7 @@ export default function EditDetailsModal({ open, profile, onClose, onSent }) {
     setSaving(true)
     setError('')
     try {
-      const payload = toUpdatePayload(isRegisteredMsme(draft) ? draft : { ...draft, udyam_number: '' }, profile)
+      const payload = toUpdatePayload(isRegisteredMsme(draft) ? { ...draft, cin: '' } : { ...draft, udyam_number: '' }, profile)
       await createUpdateRequest(profile.vendor_id, payload)
       onSent()
     } catch (saveError) {
@@ -133,7 +138,7 @@ export default function EditDetailsModal({ open, profile, onClose, onSent }) {
             const visible = fields.filter(
               ([key]) =>
                 (key !== 'udyam_number' || isRegisteredMsme(draft) || String(profile.udyam_number ?? '').trim() !== '') &&
-                (key !== 'cin' || isCompanyType(draft.vendor_type) || String(profile.cin ?? '').trim() !== ''),
+                (key !== 'cin' || cinApplies(draft.msme_status) || String(profile.cin ?? '').trim() !== ''),
             )
             return (
               <section key={title}>
@@ -160,7 +165,7 @@ export default function EditDetailsModal({ open, profile, onClose, onSent }) {
                     {visible.map(([key, label, type = 'text', options]) => {
                       const changed = changedKeys.has(key)
                       const locked = LOCKED_KEYS.has(key) && String(profile[key] ?? '').trim() !== ''
-                      const required = requiredKeys.has(key) || (key === 'udyam_number' && isRegisteredMsme(draft))
+                      const required = requiredKeys.has(key) || (key === 'udyam_number' && isRegisteredMsme(draft)) || (key === 'cin' && cinApplies(draft.msme_status))
                       const highlight = changed ? ' border-[#0046dc]! bg-[#eef2fb]! ring-2 ring-[#0046dc]/15' : ''
                       return (
                         <div key={key} className={wideKeys.has(key) ? 'col-span-2' : ''}>

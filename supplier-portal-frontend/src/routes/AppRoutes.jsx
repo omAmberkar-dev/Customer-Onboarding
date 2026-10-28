@@ -6,6 +6,7 @@ import VendorRequestPage from '../pages/VendorRequestPage'
 import ApplicationStatusPage from '../pages/ApplicationStatusPage'
 import AgreementSigningPage from '../pages/AgreementSigningPage'
 import AgreementsPage from '../pages/AgreementsPage'
+import MyLoansPage from '../pages/MyLoansPage'
 import VerifyAgreementPage from '../pages/VerifyAgreementPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import ProtectedRoute from '../components/layout/ProtectedRoute'
@@ -24,6 +25,8 @@ export default function AppRoutes() {
         <Route path="/agreement" element={<ProtectedRoute stages={[STAGES.agreement]}><AgreementSigningPage /></ProtectedRoute>} />
         <Route path="/agreements" element={<ProtectedRoute stages={[STAGES.active, STAGES.agreementSigned, STAGES.makerReview, STAGES.checkerReview, STAGES.changeRequested, STAGES.returned]}><AgreementsPage /></ProtectedRoute>} />
         <Route path="/agreements/:id/sign" element={<ProtectedRoute stages={[STAGES.active]}><AgreementSigningPage /></ProtectedRoute>} />
+        {/* Every signed-in customer: before onboarding is approved it says so. */}
+        <Route path="/loans" element={<ProtectedRoute><MyLoansPage /></ProtectedRoute>} />
         <Route path="/verify-agreement" element={<VerifyAgreementPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

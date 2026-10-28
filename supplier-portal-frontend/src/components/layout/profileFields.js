@@ -2,11 +2,11 @@ import { BadgeCheck, Building2, Landmark, MapPin } from 'lucide-react'
 import { currencies, indianStates } from '../../data/mockData'
 import { normalizePhone } from '../../data/countryCodes'
 import { aadhaarDigits, formatAadhaar } from '../../utils/formatters'
+import { VENDOR_TYPES } from '../../data/vendorTypes'
 
 // The vendor profile's fields, shared by the read-only profile panel and the Edit details popup.
 // Each field is [key, label, input type, options (for selects)].
 
-export const VENDOR_TYPES = ['Individual', 'Proprietorship', 'Partnership', 'Private limited company', 'Public limited company', 'Government entity', 'Other']
 export const MSME_STATUSES = ['Registered', 'Not registered', 'Not applicable']
 
 export const sections = [
@@ -22,6 +22,7 @@ export const sections = [
       ['currency', 'Transaction currency', 'select', currencies],
       ['registration_number', 'Company registration number'],
       ['msme_status', 'MSME status', 'select', MSME_STATUSES],
+      ['cin', 'CIN'],
       ['udyam_number', 'MSME / Udyam number'],
     ],
   },
@@ -32,7 +33,6 @@ export const sections = [
       ['gstin', 'GSTIN'],
       ['pan', 'PAN'],
       ['aadhaar_no', 'Aadhaar number'],
-      ['cin', 'CIN'],
     ],
   },
   {

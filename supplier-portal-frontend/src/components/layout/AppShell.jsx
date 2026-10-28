@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, Handshake, Home, LogOut, ReceiptText, Replace } from 'lucide-react'
+import { ArrowLeft, ChevronRight, Handshake, Home, Landmark, LogOut, ReceiptText, Replace } from 'lucide-react'
 import AppLogo from '../common/AppLogo'
 import useAuth from '../../hooks/useAuth'
 import VendorProfilePanel from './VendorProfilePanel'
@@ -9,6 +9,7 @@ import { OPEN_PROFILE_EVENT } from '../../utils/events'
 import { STAGES, WAITING_STAGES, homeForStage } from '../../utils/stages'
 
 const NAV_ITEMS = [
+  { to: '/loans', label: 'My loans', icon: Landmark },
   { to: '/invoices', label: 'Invoices', icon: ReceiptText },
   { to: '/agreements', label: 'Agreement', icon: Handshake },
   { to: '/update-requests', label: 'Change Requests', icon: Replace },
@@ -58,6 +59,18 @@ export default function AppShell({ breadcrumb, children, backTo, onBack }) {
           </div>
 
           <div className="flex items-center gap-1">
+            {/* Without the sidebar (before onboarding is approved) My loans is reached from here. */}
+            {!isActive && (
+              <Link
+                to="/loans"
+                aria-label="My loans"
+                title="My loans"
+                aria-current={location.pathname === '/loans' ? 'page' : undefined}
+                className="interactive-icon"
+              >
+                <Landmark size={17} />
+              </Link>
+            )}
             {isActive && (
               <Link
                 to={homePath}
@@ -73,7 +86,7 @@ export default function AppShell({ breadcrumb, children, backTo, onBack }) {
                 type="button"
                 onClick={() => canViewProfile && setProfileOpen(true)}
                 disabled={!canViewProfile}
-                className="flex items-center gap-3 rounded-lg text-left transition hover:opacity-80 disabled:cursor-default disabled:hover:opacity-100"
+                className="flex min-h-11 min-w-11 items-center justify-center gap-3 rounded-lg text-left transition hover:opacity-80 disabled:cursor-default disabled:hover:opacity-100"
                 aria-label={isActive ? 'Open customer profile' : 'View submitted application'}
                 title={isActive ? undefined : 'View submitted application'}
               >
@@ -123,7 +136,7 @@ export default function AppShell({ breadcrumb, children, backTo, onBack }) {
           {showSidebar && (
             <nav className="no-print flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/90 px-3 py-2 md:hidden" aria-label="Sections">
               {NAV_ITEMS.map(({ to, label }) => (
-                <Link key={to} to={to} className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-semibold ${location.pathname.startsWith(to) ? 'bg-brand-50 text-brand-700' : 'text-slate-600'}`}>{label}</Link>
+                <Link key={to} to={to} className={`inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-xs font-semibold ${location.pathname.startsWith(to) ? 'bg-brand-50 text-brand-700' : 'text-slate-600'}`}>{label}</Link>
               ))}
             </nav>
           )}

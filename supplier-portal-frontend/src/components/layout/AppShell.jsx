@@ -1,34 +1,79 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ChevronRight, Handshake, Home, Landmark, LogOut, ReceiptText, Replace } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronRight, Landmark, LifeBuoy, LogOut, Mail, UserRound } from 'lucide-react'
 import AppLogo from '../common/AppLogo'
 import useAuth from '../../hooks/useAuth'
 import VendorProfilePanel from './VendorProfilePanel'
 import AgreementBanner from './AgreementBanner'
+import { NAV_ITEMS, SUPPORT_EMAIL, isActivePath } from './navigation'
 import { OPEN_PROFILE_EVENT } from '../../utils/events'
 import { STAGES, WAITING_STAGES, homeForStage } from '../../utils/stages'
+import { displayName } from '../../utils/customer'
 
-const NAV_ITEMS = [
-  { to: '/loans', label: 'My loans', icon: Landmark },
-  { to: '/invoices', label: 'Invoices', icon: ReceiptText },
-  { to: '/agreements', label: 'Agreement', icon: Handshake },
-  { to: '/update-requests', label: 'Change Requests', icon: Replace },
-]
+// The avatar's initials.
+const initials = (name) => name.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || 'C'
+
+// The avatar, name and role; opens a menu with the profile and log out.
+function UserMenu({ name, canViewProfile, onProfile, onSignOut }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const close = (e) => { if (!ref.current?.contains(e.target)) setOpen(false) }
+    const esc = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc) }
+  }, [open])
+  const item = 'flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-[13px] font-semibold text-navy-900 transition hover:bg-brand-50 hover:text-brand-700'
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} className="flex min-h-11 items-center gap-3 rounded-lg px-1.5 text-left transition hover:bg-[#f2f5fd]">
+        <span className="grid size-9 place-items-center rounded-full bg-[#002880] text-xs font-bold text-white" aria-hidden="true">{initials(name)}</span>
+        <span className="hidden sm:block">
+          <b className="block max-w-44 truncate text-[13px] font-semibold leading-tight text-black">{name}</b>
+          <small className="block text-[11.5px] text-black/60">Customer</small>
+        </span>
+        <ChevronDown size={16} className="hidden text-black/50 sm:block" aria-hidden="true" />
+        <span className="sr-only">Account menu</span>
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-12 z-40 w-56 rounded-xl border border-[#d8e0e9] bg-white p-1.5 shadow-[0_12px_32px_rgba(11,55,104,0.14)]">
+          {canViewProfile && <button type="button" role="menuitem" className={item} onClick={() => { setOpen(false); onProfile() }}><UserRound size={16} /> My profile</button>}
+          <button type="button" role="menuitem" className={item} onClick={onSignOut}><LogOut size={16} /> Log out</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// One sidebar entry: a link, or (Profile) a button that opens the profile panel.
+function NavEntry({ item, pathname, onProfile, compact = false }) {
+  const Icon = item.icon
+  const active = isActivePath(item, pathname)
+  const cls = compact
+    ? `inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-3 text-xs font-semibold ${active ? 'bg-brand-50 text-brand-700' : 'text-slate-600'}`
+    : `flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-[13.5px] transition ${active ? 'bg-[#e6edff] font-semibold text-brand-700' : 'font-medium text-black/70 hover:bg-[#f2f5fd] hover:text-black'}`
+  const body = <><Icon size={compact ? 15 : 18} aria-hidden="true" /> <span className="whitespace-nowrap">{item.label}</span></>
+  if (item.profile) return <button type="button" onClick={onProfile} className={cls}>{body}</button>
+  return <Link to={item.to} aria-current={active ? 'page' : undefined} className={cls}>{body}</Link>
+}
 
 export default function AppShell({ breadcrumb, children, backTo, onBack }) {
   const { logout, user, profile, stage, updateProfile } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [profileOpen, setProfileOpen] = useState(false)
-  // Invoices, change requests and the editable profile only exist once the vendor is active; until then the
-  // vendor just follows their application.
+  // Every section beyond following the application exists only once the customer is active.
   const isActive = stage === STAGES.active
-  // While the application is being reviewed the vendor can still look at what they submitted, but not change it.
+  // While the application is being reviewed the customer can still look at what they submitted, but not change it.
   const canViewProfile = isActive || WAITING_STAGES.includes(stage)
   const showSidebar = isActive && !backTo
   const homePath = homeForStage(stage)
+  const name = displayName(profile, user)
+  const openProfile = () => canViewProfile && setProfileOpen(true)
 
-  // Pages can ask for the profile to open (e.g. "View submitted application" on the status page).
+  // Pages (and the header search) ask for the profile to open with this event.
   useEffect(() => {
     if (!canViewProfile) return undefined
     const open = () => setProfileOpen(true)
@@ -42,66 +87,20 @@ export default function AppShell({ breadcrumb, children, backTo, onBack }) {
   }
 
   return (
-    <div className="app-shell relative flex min-h-screen flex-col overflow-hidden bg-[#f1f4f8]">
-      {/* The navbar (the LAS layout): brand, breadcrumb, then home and the signed-in customer with log out. */}
-      {!backTo && <header className="no-print sticky top-0 z-30 border-b border-[#d8e0e9] bg-white shadow-[var(--shadow-xs)]">
-        <div className="flex h-16 w-full items-center justify-between gap-4 pl-4 pr-[18px]">
-          <div className="flex min-w-0 items-center gap-4">
-            <AppLogo compact />
-            <div className="hidden h-7 w-px bg-[#d8e0e9] sm:block" aria-hidden="true" />
-            <nav aria-label="Breadcrumb" className="hidden min-w-0 items-center gap-2 text-[12.5px] font-medium text-black/65 sm:flex">
-              {isActive
-                ? <Link to={homePath} className="transition hover:text-brand-600">Workspace</Link>
-                : <span>Workspace</span>}
-              <ChevronRight size={14} className="text-black/40" />
-              <span className="truncate font-semibold text-black">{breadcrumb || 'Customer Onboarding'}</span>
-            </nav>
+    <div className="app-shell relative flex min-h-screen flex-col overflow-x-clip bg-[#f1f4f8]">
+      {!backTo && <header className="no-print sticky top-0 z-30 border-b border-[#d8e0e9] bg-white">
+        <div className="flex h-16 w-full items-center justify-between gap-4 px-4 lg:px-5">
+          <div className="flex min-w-0 items-center overflow-hidden">
+            <AppLogo compact to={homePath} subtitle="Customer onboarding & self-service" />
           </div>
-
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             {/* Without the sidebar (before onboarding is approved) My loans is reached from here. */}
             {!isActive && (
-              <Link
-                to="/loans"
-                aria-label="My loans"
-                title="My loans"
-                aria-current={location.pathname === '/loans' ? 'page' : undefined}
-                className="interactive-icon"
-              >
+              <Link to="/loans" aria-label="My loans" title="My loans" aria-current={location.pathname === '/loans' ? 'page' : undefined} className="interactive-icon">
                 <Landmark size={17} />
               </Link>
             )}
-            {isActive && (
-              <Link
-                to={homePath}
-                aria-label="Workspace home"
-                title="Workspace home"
-                className="interactive-icon"
-              >
-                <Home size={17} />
-              </Link>
-            )}
-            <div className="ml-2 flex items-center gap-3 border-l border-[#d8e0e9] pl-4">
-              <button
-                type="button"
-                onClick={() => canViewProfile && setProfileOpen(true)}
-                disabled={!canViewProfile}
-                className="flex min-h-11 min-w-11 items-center justify-center gap-3 rounded-lg text-left transition hover:opacity-80 disabled:cursor-default disabled:hover:opacity-100"
-                aria-label={isActive ? 'Open customer profile' : 'View submitted application'}
-                title={isActive ? undefined : 'View submitted application'}
-              >
-                <span className="grid size-8 place-items-center rounded-full bg-[#002880] text-xs font-bold text-white ring-2 ring-[#d8e0e9]" aria-hidden="true">
-                  {(user?.email?.[0] || 'C').toUpperCase()}
-                </span>
-                <span className="hidden sm:block">
-                  <b className="block max-w-44 truncate text-[12.5px] font-semibold leading-tight text-black">{user?.email}</b>
-                  <small className="block text-[11.5px] text-black/65">Customer</small>
-                </span>
-              </button>
-              <button onClick={handleSignOut} aria-label="Log out" title="Log out" className="interactive-icon">
-                <LogOut size={17} />
-              </button>
-            </div>
+            <UserMenu name={name} canViewProfile={canViewProfile} onProfile={openProfile} onSignOut={handleSignOut} />
           </div>
         </div>
       </header>}
@@ -110,60 +109,60 @@ export default function AppShell({ breadcrumb, children, backTo, onBack }) {
 
       <div className="relative z-10 flex min-h-0 flex-1">
         {showSidebar && (
-          <aside className="group no-print sticky top-16 hidden h-[calc(100svh-4rem)] w-[72px] shrink-0 overflow-hidden border-r border-[#d8e0e9] bg-white px-3 py-4 transition-[width] duration-200 ease-out hover:w-64 focus-within:w-64 md:block" aria-label="Sections">
-            {/* The LAS sidebar as an icon rail that opens (and moves the page over) while hovered or focused. The active item has a
-                pale blue fill, a blue bar on its left edge and a filled icon tile. */}
-            <div className="w-58">
-              <p className="flex h-5 items-center gap-2 whitespace-nowrap px-3 pb-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-black/55 opacity-0 transition-opacity after:h-px after:flex-1 after:bg-[#d8e0e9] group-hover:opacity-100 group-focus-within:opacity-100">Workspace</p>
-              <nav className="mt-1 grid gap-0.5">
-                {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-                  const active = location.pathname === to || (to === '/agreements' && location.pathname.startsWith('/agreements/'))
-                  return (
-                    <Link key={to} to={to} title={label} aria-label={label} aria-current={active ? 'page' : undefined} className={`relative flex min-h-[42px] w-[46px] items-center gap-3 rounded-lg px-2 py-[5px] text-[13.5px] transition-[width,background-color,color] group-hover:w-full group-focus-within:w-full ${active ? 'bg-[#dce6ff] font-semibold text-black before:absolute before:-left-3 before:inset-y-[7px] before:w-1 before:rounded-r before:bg-[#0046dc]' : 'font-medium text-black/65 hover:bg-[#f2f5fd] hover:text-black'}`}>
-                      <span className={`grid size-[30px] shrink-0 place-items-center rounded-md ${active ? 'bg-[#002880] text-white' : ''}`}>
-                        <Icon size={17} />
-                      </span>
-                      <span className="whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">{label}</span>
-                    </Link>
-                  )
-                })}
-              </nav>
+          <aside className="no-print sticky top-16 hidden h-[calc(100svh-4rem)] w-[232px] shrink-0 flex-col justify-between overflow-y-auto border-r border-[#d8e0e9] bg-white px-3 py-4 lg:flex" aria-label="Sections">
+            <nav className="grid gap-1">
+              {NAV_ITEMS.filter((i) => i.group !== 'account').map((item) => <NavEntry key={item.label} item={item} pathname={location.pathname} onProfile={openProfile} />)}
+              <div className="my-2 h-px bg-[#e5eaf1]" aria-hidden="true" />
+              {NAV_ITEMS.filter((i) => i.group === 'account').map((item) => <NavEntry key={item.label} item={item} pathname={location.pathname} onProfile={openProfile} />)}
+            </nav>
+            <div className="mt-6 rounded-xl border border-[#d8e0e9] bg-[#f7f9fc] p-4">
+              <p className="flex items-center gap-2 text-[13px] font-bold text-navy-900"><LifeBuoy size={16} className="text-brand-600" /> Need help?</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Our support team is here to assist you.</p>
+              <Link to="/support" className="mt-3 inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-brand-600 bg-white px-3 text-xs font-semibold text-brand-700 transition hover:bg-brand-50">
+                Contact support <ChevronRight size={14} />
+              </Link>
             </div>
           </aside>
         )}
-        {/* While the submitted application is open beside the status page, the page makes room for it (the panel is 42rem wide). */}
         <div className={`flex min-h-0 min-w-0 flex-1 flex-col transition-[padding] duration-200 ${profileOpen && !isActive ? 'lg:pr-[42rem]' : ''}`}>
           {showSidebar && (
-            <nav className="no-print flex gap-1 overflow-x-auto border-b border-slate-200 bg-white/90 px-3 py-2 md:hidden" aria-label="Sections">
-              {NAV_ITEMS.map(({ to, label }) => (
-                <Link key={to} to={to} className={`inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-xs font-semibold ${location.pathname.startsWith(to) ? 'bg-brand-50 text-brand-700' : 'text-slate-600'}`}>{label}</Link>
-              ))}
+            <nav className="no-print flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-3 py-2 lg:hidden" aria-label="Sections">
+              {NAV_ITEMS.map((item) => <NavEntry key={item.label} item={item} pathname={location.pathname} onProfile={openProfile} compact />)}
             </nav>
           )}
-      <main className={`app-shell__main relative flex-1 min-w-0 py-2 sm:py-3 ${backTo ? 'guest-shell__main flex min-h-0 flex-col pt-3 sm:pt-4' : ''}`}>
-        {backTo && (
-          <div className="no-print mx-auto mb-2 w-full shrink-0 px-3 sm:px-4">
-            {onBack ? (
-              // The page needs to confirm first (e.g. unsaved progress would be lost), so it decides when to leave.
-              <button
-                type="button"
-                onClick={onBack}
-                className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-navy-900"
-              >
-                <ArrowLeft size={18} /> Back
-              </button>
-            ) : (
-              <Link
-                to={backTo}
-                className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-navy-900"
-              >
-                <ArrowLeft size={18} /> Back
-              </Link>
+          <main className={`app-shell__main relative flex-1 min-w-0 py-3 sm:py-4 ${backTo ? 'guest-shell__main flex min-h-0 flex-col pt-3 sm:pt-4' : ''}`}>
+            {backTo && (
+              <div className="no-print mx-auto mb-2 w-full shrink-0 px-3 sm:px-4">
+                {onBack ? (
+                  // The page needs to confirm first (e.g. unsaved progress would be lost), so it decides when to leave.
+                  <button type="button" onClick={onBack} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-navy-900">
+                    <ArrowLeft size={18} /> Back
+                  </button>
+                ) : (
+                  <Link to={backTo} className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-bold text-slate-600 transition hover:bg-white hover:text-navy-900">
+                    <ArrowLeft size={18} /> Back
+                  </Link>
+                )}
+              </div>
             )}
-          </div>
-        )}
-        {children}
-      </main>
+            {!backTo && breadcrumb && (
+              <nav aria-label="Breadcrumb" className="no-print mx-auto mb-1 flex w-full max-w-[1440px] items-center gap-2 px-4 text-[12.5px] font-medium text-black/60 sm:px-6 lg:px-8">
+                {isActive ? <Link to={homePath} className="transition hover:text-brand-600">Workspace</Link> : <span>Workspace</span>}
+                <ChevronRight size={14} className="text-black/35" aria-hidden="true" />
+                <span aria-current="page" className="truncate font-semibold text-black">{breadcrumb}</span>
+              </nav>
+            )}
+            {children}
+          </main>
+          {!backTo && (
+            <footer className="no-print border-t border-[#d8e0e9] bg-white px-4 py-3 text-xs text-slate-600 sm:px-6 lg:px-8">
+              <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <b className="text-navy-900">Need help?</b>
+                {/* The portal sends support messages itself (Support page), so this never opens an email app. */}
+                <Link to="/support" className="inline-flex min-h-8 items-center gap-1.5 transition hover:text-brand-600"><Mail size={14} /> Message support ({SUPPORT_EMAIL})</Link>
+              </p>
+            </footer>
+          )}
         </div>
       </div>
       <VendorProfilePanel open={profileOpen} onClose={() => setProfileOpen(false)} profile={profile} onProfileRefresh={updateProfile} readOnly={!isActive} />

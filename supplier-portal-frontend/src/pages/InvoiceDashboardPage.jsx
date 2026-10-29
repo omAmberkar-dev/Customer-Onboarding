@@ -29,7 +29,7 @@ export default function InvoiceDashboardPage() {
   return (
     <AppShell breadcrumb="Invoices">
       <PageContainer wide className="vendor-workspace h-full">
-        <div className="mx-auto flex h-full max-w-[1820px] min-h-0 flex-col gap-4 overflow-y-auto px-1 pb-4 sm:px-2">
+        <div className="mx-auto flex h-full max-w-[1820px] min-h-0 flex-col gap-3 overflow-y-auto px-1 pb-3 sm:px-2">
           {renewalReady && (
             <Link to="/agreements" className="flex shrink-0 items-center gap-2 rounded-lg border border-[#b3c3e4] bg-[#eef2fb] px-3 py-2 text-xs font-semibold text-[#052e86] transition hover:bg-[#dce6ff]/60">
               <FilePenLine size={15} className="shrink-0" />
@@ -37,9 +37,9 @@ export default function InvoiceDashboardPage() {
             </Link>
           )}
           <div className="shrink-0 px-1">
-            <h1 className="text-lg font-extrabold text-[#000000]">Invoices</h1>
-            <p className="mt-1 text-xs text-[#5f5f5f]">Upload your invoices and track their extraction status, amounts and dates. Invoices uploaded on your behalf by your Relationship Manager also appear here.</p>
-            {!isLoading && !loadError && invoices.length > 0 && <div className="mt-3"><InvoiceKpis invoices={invoices} /></div>}
+            <h1 className="text-base font-extrabold text-[#000000]">Invoices</h1>
+            <p className="text-xs text-[#5f5f5f]">Upload your invoices and track their extraction status, amounts and dates. Invoices uploaded on your behalf by your Relationship Manager also appear here.</p>
+            {!isLoading && !loadError && invoices.length > 0 && <div className="mt-2"><InvoiceKpis invoices={invoices} /></div>}
           </div>
           {/* While on hold (no agreement in force) uploads and replacements are refused by the server; the controls are frozen here. */}
           <div className="relative shrink-0" title={onHold ? HOLD_TOOLTIP : undefined}>

@@ -622,6 +622,19 @@ export const fetchAgreementPdfBlob = (id) => agreementPdfBlob(id, false)
 // invoices. Before onboarding is approved it is an empty journey ({ onboarded: false }).
 export const getMyLoans = () => agreementCall('/vendors/me/loans', undefined, 'Unable to load your loans. Please try again.')
 
+// Home: the customer's invoice, agreement and change-request summary. A section the backend could not read is null and
+// named in `unavailable` (not a zero).
+export const getMyHome = () => agreementCall('/vendors/me/home', undefined, 'Unable to load your summary. Please try again.')
+
+// Sends a message to the support team through the backend's email service: { topic, reference, message } ->
+// { sent, request_id, submitted_at }. Throws the backend's own reason (with `status`, and `body.fields` for invalid input).
+export const sendSupportRequest = (payload) =>
+  agreementCall('/vendors/me/support-request', jsonRequest('POST', payload), 'Your message could not be sent. Please try again.')
+
+// The customer's own recent events, newest first: { events: [{ at, category, title, reference }], unavailable }.
+export const getMyActivity = (limit = 50) =>
+  agreementCall(`/vendors/me/activity?limit=${encodeURIComponent(limit)}`, undefined, 'Unable to load your recent activity. Please try again.')
+
 // A Sanction Memo, Drawdown Memo or invoice PDF (kind 'sanction', 'drawdown' or 'invoice') as a Blob.
 async function loanDocumentBlob(kind, id) {
   let response

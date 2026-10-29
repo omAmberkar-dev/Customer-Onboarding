@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 
 // The brand: the mark in a bordered tile, the product name and its subtitle (the LAS navbar brand). `compact` (the
 // navbar) keeps only the mark on the narrowest phones, so the name never runs under the header's buttons.
-export default function AppLogo({ light = false, compact = false, to = '/' }) {
+export default function AppLogo({ light = false, compact = false, to = '/', subtitle = 'Customer onboarding' }) {
   return (
     <Link
       to={to}
@@ -22,7 +22,7 @@ export default function AppLogo({ light = false, compact = false, to = '/' }) {
           Customer Central
         </span>
         <span className={`mt-px block whitespace-nowrap text-[10.5px] font-semibold uppercase tracking-[0.04em] ${light ? 'text-white/75' : 'text-black/65'}`}>
-          Customer onboarding
+          {subtitle}
         </span>
       </span>
     </Link>

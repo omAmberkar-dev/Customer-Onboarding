@@ -18,7 +18,7 @@ export const FORM_STAGES = [STAGES.draft, STAGES.returned]
 export const WAITING_STAGES = [STAGES.makerReview, STAGES.checkerReview, STAGES.agreementSigned, STAGES.approved, STAGES.rejected, STAGES.changeRequested]
 
 export function homeForStage(stage) {
-  if (stage === STAGES.active) return '/invoices'
+  if (stage === STAGES.active) return '/home'
   if (stage === STAGES.agreement) return '/agreement'
   if (FORM_STAGES.includes(stage)) return '/request-vendor'
   if (WAITING_STAGES.includes(stage)) return '/application-status'

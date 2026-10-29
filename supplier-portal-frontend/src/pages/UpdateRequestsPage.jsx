@@ -149,10 +149,10 @@ export default function UpdateRequestsPage() {
   return (
     <AppShell breadcrumb="Change Requests">
       <PageContainer wide className="vendor-workspace h-full">
-        <div className="mx-auto flex h-full max-w-[1820px] min-h-0 flex-col gap-4 overflow-y-auto px-1 pb-4 sm:px-2">
+        <div className="mx-auto flex h-full max-w-[1820px] min-h-0 flex-col gap-3 overflow-y-auto px-1 pb-3 sm:px-2">
           <div className="shrink-0 px-1">
-            <h1 className="text-lg font-extrabold text-[#000000]">Change Requests</h1>
-            <p className="mt-1 text-xs text-[#5f5f5f]">Track the changes you asked to make to your customer details. Your current details stay active until a request is approved.</p>
+            <h1 className="text-base font-extrabold text-[#000000]">Change Requests</h1>
+            <p className="text-xs text-[#5f5f5f]">Track the changes you asked to make to your customer details. Your current details stay active until a request is approved.</p>
           </div>
 
           <div className="grid shrink-0 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -163,17 +163,17 @@ export default function UpdateRequestsPage() {
           </div>
 
           {openRequest && (
-            <section className="shrink-0 rounded-xl border border-[#b3c3e4] bg-[#f7f9fc] p-4 shadow-[0_4px_16px_rgba(40,83,130,0.04)] sm:p-5">
+            <section className="shrink-0 rounded-xl border border-[#b3c3e4] bg-[#f7f9fc] px-4 py-3 shadow-[0_4px_16px_rgba(40,83,130,0.04)]">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-[0.05em] text-[#0046dc]">Current request</p>
-                  <h2 className="mt-1 text-sm font-extrabold text-[#000000]">Request #{openRequest.request_id} · sent {timeAgo(openRequest.requested_at)}</h2>
-                  <p className="mt-1 text-xs text-[#5f5f5f]">{STATUS_MESSAGES[openRequest.status]}</p>
+                  <h2 className="mt-0.5 text-sm font-extrabold text-[#000000]">Request #{openRequest.request_id} · sent {timeAgo(openRequest.requested_at)}</h2>
+                  <p className="mt-0.5 text-xs text-[#5f5f5f]">{STATUS_MESSAGES[openRequest.status]}</p>
                 </div>
                 <button type="button" onClick={() => setSelected(openRequest)} className="inline-flex h-8 shrink-0 items-center rounded-lg border border-[#2566ff] bg-white px-3.5 text-[#0046dc] transition hover:bg-[#eef2fb]"><span className="text-xs font-bold">View details</span></button>
               </div>
-              <div className="mt-4"><StatusTimeline request={openRequest} /></div>
-              <div className="mt-4 flex flex-wrap items-center gap-1.5 text-xs">
+              <div className="mt-3"><StatusTimeline request={openRequest} /></div>
+              <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
                 <span className="text-[#5f5f5f]">Changing:</span>
                 {fieldNames(openRequest).map((name) => <span key={name} className="rounded-full border border-[#c2cdda] bg-white px-2.5 py-0.5 font-medium text-[#474747]">{name}</span>)}
               </div>
@@ -181,7 +181,7 @@ export default function UpdateRequestsPage() {
           )}
 
           <section className="shrink-0 overflow-hidden rounded-xl border border-[#d8e0e9] bg-white shadow-[0_4px_16px_rgba(40,83,130,0.04)]">
-            <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-3 pt-4 sm:px-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-2 pt-3 sm:px-5">
               <div className="flex items-center gap-2">
                 <h2 className="text-[13px] font-extrabold text-[#000000]">Request history</h2>
                 <span className="grid min-w-5 place-items-center rounded-full bg-[#f1f4f8] px-1.5 py-0.5 text-[11px] font-bold text-[#0046dc]">{matching.length}</span>
@@ -196,12 +196,12 @@ export default function UpdateRequestsPage() {
             </div>
 
             {loading ? (
-              <div className="flex items-center justify-center gap-2 border-t border-[#d8e0e9] px-6 py-14 text-sm font-semibold text-slate-600"><LoaderCircle size={18} className="animate-spin text-brand-600" /> Loading requests...</div>
+              <div className="flex items-center justify-center gap-2 border-t border-[#d8e0e9] px-6 py-10 text-sm font-semibold text-slate-600"><LoaderCircle size={18} className="animate-spin text-brand-600" /> Loading requests...</div>
             ) : error ? (
               <div role="alert" className="m-5 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm font-semibold text-red-800"><AlertCircle size={18} /> {error}</div>
             ) : matching.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 border-t border-[#d8e0e9] px-6 py-12 text-center">
-                <span className="grid size-11 place-items-center rounded-full bg-[#eef2fb] text-[#8a94a6]"><Inbox size={20} /></span>
+              <div className="flex flex-col items-center justify-center gap-1.5 border-t border-[#d8e0e9] px-6 py-6 text-center">
+                <span className="grid size-9 place-items-center rounded-full bg-[#eef2fb] text-[#8a94a6]"><Inbox size={17} /></span>
                 <p className="text-sm font-bold text-[#000000]">{requests.length ? 'No requests in this view' : 'No update requests yet'}</p>
                 <p className="max-w-md text-xs text-slate-500">{requests.length ? 'Try another filter to see your other requests.' : 'When you edit your details from your profile and send a request, it will show up here so you can follow its progress.'}</p>
               </div>
@@ -210,22 +210,22 @@ export default function UpdateRequestsPage() {
                 <table className="w-full min-w-[760px] border-collapse border-t border-[#d8e0e9] text-left">
                   <thead className="bg-[#f7f9fc] text-[9px] font-extrabold uppercase tracking-[0.04em] text-[#5f5f5f]">
                     <tr>
-                      <th className="px-5 py-3">Request</th>
-                      <th className="px-4 py-3">Requested on</th>
-                      <th className="px-4 py-3">Changes</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-5 py-3 text-right">Details</th>
+                      <th className="px-5 py-2">Request</th>
+                      <th className="px-4 py-2">Requested on</th>
+                      <th className="px-4 py-2">Changes</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-5 py-2 text-right">Details</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#f1f4f8]">
                     {visible.map((item) => {
                       return (
                         <tr key={item.request_id} className="cursor-pointer transition hover:bg-[#eef2fb]/35" onClick={() => setSelected(item)}>
-                          <td className="px-5 py-3 text-xs font-extrabold text-[#000000]">#{item.request_id}</td>
-                          <td className="whitespace-nowrap px-4 py-3 text-xs text-[#000000]">{formatDate(item.requested_at)}</td>
-                          <td className="max-w-md truncate px-4 py-3 text-xs text-[#000000]">{fieldNames(item).join(', ')}</td>
-                          <td className="px-4 py-3"><StatusBadge status={item.status} /></td>
-                          <td className="px-5 py-3 text-right text-[#0046dc]"><ChevronRight size={16} className="ml-auto" /></td>
+                          <td className="px-5 py-2 text-xs font-extrabold text-[#000000]">#{item.request_id}</td>
+                          <td className="whitespace-nowrap px-4 py-2 text-xs text-[#000000]">{formatDate(item.requested_at)}</td>
+                          <td className="max-w-md truncate px-4 py-2 text-xs text-[#000000]">{fieldNames(item).join(', ')}</td>
+                          <td className="px-4 py-2"><StatusBadge status={item.status} /></td>
+                          <td className="px-5 py-2 text-right text-[#0046dc]"><ChevronRight size={16} className="ml-auto" /></td>
                         </tr>
                       )
                     })}
@@ -235,7 +235,7 @@ export default function UpdateRequestsPage() {
             )}
 
             {!loading && !error && matching.length > 0 && (
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#d8e0e9] bg-[#fbfcfe] px-4 py-3 text-xs text-[#474747] sm:px-5">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#d8e0e9] bg-[#fbfcfe] px-4 py-2 text-xs text-[#474747] sm:px-5">
                 <span>Showing {rangeStart}–{rangeEnd} of {matching.length} request{matching.length === 1 ? '' : 's'}</span>
                 <div className="flex items-center gap-1.5">
                   {[
@@ -272,20 +272,20 @@ export default function UpdateRequestsPage() {
             )}
           </section>
 
-          <section className="shrink-0 rounded-xl border border-[#d8e0e9] bg-white p-4 shadow-[0_4px_16px_rgba(40,83,130,0.04)] sm:p-5">
+          <section className="shrink-0 rounded-xl border border-[#d8e0e9] bg-white px-4 py-3 shadow-[0_4px_16px_rgba(40,83,130,0.04)]">
             <h2 className="text-[13px] font-extrabold text-[#000000]">How updating your details works</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <div className="mt-2 grid gap-2 md:grid-cols-3">
               {HOW_IT_WORKS.map(({ icon: Icon, title, text }, index) => (
-                <div key={title} className="flex items-start gap-3 rounded-lg border border-[#d8e0e9] bg-[#fbfcfe] p-3">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-[#f1f4f8] text-[#0046dc]"><Icon size={17} /></span>
+                <div key={title} className="flex items-start gap-2.5 rounded-lg border border-[#d8e0e9] bg-[#fbfcfe] px-2.5 py-2">
+                  <span className="grid size-7 shrink-0 place-items-center rounded-md bg-[#f1f4f8] text-[#0046dc]"><Icon size={14} /></span>
                   <div>
                     <p className="text-xs font-bold text-[#000000]">{index + 1}. {title}</p>
-                    <p className="mt-0.5 text-xs text-[#5f5f5f]">{text}</p>
+                    <p className="text-[11.5px] leading-4 text-[#5f5f5f]">{text}</p>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-[#5f5f5f]">You can have one request in review at a time. If a request is rejected, you’ll see the reason here and can send a new one.</p>
+            <p className="mt-2 text-[11.5px] text-[#5f5f5f]">You can have one request in review at a time. If a request is rejected, you’ll see the reason here and can send a new one.</p>
           </section>
         </div>
       </PageContainer>
@@ -296,11 +296,11 @@ export default function UpdateRequestsPage() {
 
 function StatTile({ icon: Icon, tone, label, value }) {
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-[#d8e0e9] bg-white px-4 py-3 shadow-[0_4px_16px_rgba(40,83,130,0.04)]">
-      <span className={`grid size-10 shrink-0 place-items-center rounded-lg ${tone}`}><Icon size={18} /></span>
+    <div className="flex items-center gap-3 rounded-xl border border-[#d8e0e9] bg-white px-3 py-2 shadow-[0_4px_16px_rgba(40,83,130,0.04)]">
+      <span className={`grid size-8 shrink-0 place-items-center rounded-lg ${tone}`}><Icon size={16} /></span>
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.03em] text-[#5f5f5f]">{label}</p>
-        <p className="text-xl font-extrabold leading-tight text-[#000000]">{value}</p>
+        <p className="text-[10.5px] font-semibold uppercase tracking-[0.03em] text-[#5f5f5f]">{label}</p>
+        <p className="text-lg font-extrabold leading-6 text-[#000000]">{value}</p>
       </div>
     </div>
   )

@@ -29,8 +29,8 @@ export default function InvoiceUploader({ onFiles, error, onDismissError }) {
   }
 
   return (
-    <section className="rounded-xl border border-[#d8e0e9] bg-white px-5 py-4 shadow-[0_4px_16px_rgba(40,83,130,0.04)] sm:px-6">
-      <div className="mb-3.5 flex flex-wrap items-center justify-between gap-3">
+    <section className="rounded-xl border border-[#d8e0e9] bg-white px-4 py-3 shadow-[0_4px_16px_rgba(40,83,130,0.04)] sm:px-5">
+      <div className="mb-2.5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="size-1 rounded-full bg-[#0046dc]" />
           <h1 className="text-[12px] font-extrabold uppercase tracking-[0.055em] text-[#5f5f5f]">Invoice Upload</h1>
@@ -66,18 +66,18 @@ export default function InvoiceUploader({ onFiles, error, onDismissError }) {
         onDragOver={(event) => { event.preventDefault(); setDragActive(true) }}
         onDragLeave={() => setDragActive(false)}
         onDrop={(event) => { event.preventDefault(); setDragActive(false); addToQueue(event.dataTransfer.files) }}
-        className={`flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-center transition ${dragActive ? 'border-brand-500 bg-[#eef2fb]' : 'border-[#d8e0e9] bg-[#fbfcfe] hover:border-[#b3c3e4] hover:bg-[#eef2fb]/40'}`}
+        className={`flex min-h-16 cursor-pointer flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-lg border border-dashed px-3 py-2 text-center transition ${dragActive ? 'border-brand-500 bg-[#eef2fb]' : 'border-[#d8e0e9] bg-[#fbfcfe] hover:border-[#b3c3e4] hover:bg-[#eef2fb]/40'}`}
       >
-        <UploadCloud size={22} className="text-[#8a94a6]" />
+        <UploadCloud size={20} className="text-[#8a94a6]" />
         <p className="text-[13px] font-bold text-[#474747]">Click or drag PDF files here</p>
         <p className="text-[11px] text-[#5f5f5f]">PDF only — max 10MB per file</p>
       </div>
 
       {queue.length > 0 && (
-        <div className="mt-3 grid gap-2">
+        <div className="mt-2 grid gap-1.5">
           {queue.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 rounded-xl border border-[#d8e0e9] bg-white px-4 py-2.5">
-              <p className="min-w-0 flex-1 truncate text-sm font-bold text-[#000000]">{item.file.name}</p>
+            <div key={item.id} className="flex items-center gap-3 rounded-lg border border-[#d8e0e9] bg-white px-3 py-1.5">
+              <p className="min-w-0 flex-1 truncate text-[13px] font-bold text-[#000000]">{item.file.name}</p>
               <span className="shrink-0 text-xs font-medium text-[#5f5f5f]">{formatFileSize(item.file.size)}</span>
               <button type="button" onClick={() => setQueue((current) => current.filter((file) => file.id !== item.id))} aria-label={`Remove ${item.file.name}`} className="grid size-6 shrink-0 place-items-center rounded-md text-red-500 transition hover:bg-red-50"><X size={14} /></button>
             </div>

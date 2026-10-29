@@ -7,6 +7,8 @@ import ApplicationStatusPage from '../pages/ApplicationStatusPage'
 import AgreementSigningPage from '../pages/AgreementSigningPage'
 import AgreementsPage from '../pages/AgreementsPage'
 import MyLoansPage from '../pages/MyLoansPage'
+import HomePage from '../pages/HomePage'
+import SupportPage from '../pages/SupportPage'
 import VerifyAgreementPage from '../pages/VerifyAgreementPage'
 import NotFoundPage from '../pages/NotFoundPage'
 import ProtectedRoute from '../components/layout/ProtectedRoute'
@@ -18,6 +20,8 @@ export default function AppRoutes() {
     <AuthProvider>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/home" element={<ProtectedRoute stages={[STAGES.active]}><HomePage /></ProtectedRoute>} />
+        <Route path="/support" element={<ProtectedRoute stages={[STAGES.active]}><SupportPage /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute stages={[STAGES.active]}><InvoiceDashboardPage /></ProtectedRoute>} />
         <Route path="/update-requests" element={<ProtectedRoute stages={[STAGES.active]}><UpdateRequestsPage /></ProtectedRoute>} />
         <Route path="/request-vendor" element={<ProtectedRoute stages={FORM_STAGES}><VendorRequestPage /></ProtectedRoute>} />

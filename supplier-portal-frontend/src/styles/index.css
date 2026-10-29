@@ -33,7 +33,11 @@
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--page-background); }
-button, input, select, textarea { font: inherit; }
+/* In the base layer (as Tailwind's own reset has it), so a control's text-*, font-* and leading-* classes apply:
+   outside a layer this rule beat every utility, and buttons and fields ignored their own sizes. */
+@layer base {
+  button, input, select, textarea { font: inherit; }
+}
 button, a { -webkit-tap-highlight-color: transparent; }
 button:not(:disabled), a, select:not(:disabled), input[type="checkbox"]:not(:disabled) { cursor: pointer; }
 ::selection { background: #dce6ff; color: #000000; }

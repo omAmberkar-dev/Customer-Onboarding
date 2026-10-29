@@ -20,12 +20,14 @@ from mysql.connector import Error as MySQLError
 import agreement_hold
 import agreements
 import auth
+import customer_home
 import customer_journey
 import demat
 import invoice_versions
 import las_integration
 import phone_verification
 import rejections
+import support_requests
 import update_requests
 import verification
 from db import get_connection
@@ -2358,6 +2360,43 @@ def preview_replacement_invoice(invoice_id):
     return jsonify({"invoice": invoice}), 200
 
 
+def _vendor_invoice_ids(cursor, vendor_id):
+    """The ids of the vendor's invoices, ascending: those it uploaded itself, plus those its Relationship Manager
+    uploaded for it. `cursor` is a dictionary cursor.
+
+    A Relationship Manager's upload is stored with vendor_id = 'maker' and no customer of its own: the invoice's GSTIN
+    (vendor_tax_id) is the only link. It belongs to this vendor only when that GSTIN is this vendor's and no other active
+    account has it too; when several do, whose invoice it is cannot be told, so none of them sees it (rather than all).
+    """
+    cursor.execute(
+        "SELECT gstin FROM vendor WHERE vendor_id = %s LIMIT 1",
+        (vendor_id,),
+    )
+    vendor_row = cursor.fetchone()
+    vendor_gstin = ((vendor_row or {}).get("gstin") or "").strip().upper()
+    shared = False
+    if vendor_gstin:
+        cursor.execute(
+            "SELECT COUNT(*) AS n FROM vendor WHERE UPPER(TRIM(gstin)) = %s AND vendor_id <> %s "
+            "AND LOWER(TRIM(status)) = 'active'",
+            (vendor_gstin, vendor_id),
+        )
+        shared = int((cursor.fetchone() or {}).get("n") or 0) > 0
+        if shared:
+            app.logger.info("INVOICE_RM_UPLOADS_WITHHELD vendor=%s: its GSTIN is shared with another active account", vendor_id)
+    if vendor_gstin and not shared:
+        cursor.execute(
+            "SELECT id FROM invoices WHERE vendor_id = %s "
+            "OR (vendor_id = %s AND UPPER(TRIM(vendor_tax_id)) = %s)",
+            (vendor_id, MAKER_VENDOR_ID, vendor_gstin),
+        )
+    else:
+        cursor.execute("SELECT id FROM invoices WHERE vendor_id = %s", (vendor_id,))
+    # Only the ids are filtered and sorted in SQL: sorting whole rows (they carry the large OCR
+    # response) made MySQL fail with "Out of sort memory". The rows are fetched by primary key.
+    return sorted(row["id"] for row in cursor.fetchall())
+
+
 @app.get("/invoices")
 @auth.vendor_required(auth.STAGE_ACTIVE)
 def get_invoices():
@@ -2370,27 +2409,7 @@ def get_invoices():
     try:
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
-
-        cursor.execute(
-            "SELECT gstin FROM vendor WHERE vendor_id = %s LIMIT 1",
-            (vendor_id,),
-        )
-        vendor_row = cursor.fetchone()
-        vendor_gstin = ((vendor_row or {}).get("gstin") or "").strip().upper()
-
-        # Invoices uploaded by the vendor itself, plus invoices a maker uploaded
-        # on the vendor's behalf (stored with vendor_id = 'maker', matched by GSTIN).
-        if vendor_gstin:
-            cursor.execute(
-                "SELECT id FROM invoices WHERE vendor_id = %s "
-                "OR (vendor_id = %s AND UPPER(TRIM(vendor_tax_id)) = %s)",
-                (vendor_id, MAKER_VENDOR_ID, vendor_gstin),
-            )
-        else:
-            cursor.execute("SELECT id FROM invoices WHERE vendor_id = %s", (vendor_id,))
-        # Only the ids are filtered and sorted in SQL: sorting whole rows (they carry the large OCR
-        # response) made MySQL fail with "Out of sort memory". The rows are fetched by primary key.
-        matching_ids = sorted(row["id"] for row in cursor.fetchall())
+        matching_ids = _vendor_invoice_ids(cursor, vendor_id)
         invoices = []
         for start in range(0, len(matching_ids), 200):
             chunk = matching_ids[start:start + 200]
@@ -2472,6 +2491,16 @@ las_integration.configure(
     document_response=lambda vendor_id, blob_name: _document_response(vendor_id, blob_name),
 )
 app.register_blueprint(las_integration.bp)
+# Home and Activity for the signed-in customer (customer_home.py).
+customer_home.configure(invoice_ids=lambda cursor, vendor_id: _vendor_invoice_ids(cursor, vendor_id))
+app.register_blueprint(customer_home.bp)
+# Support messages from the Support page, emailed to the SUPPORT group (support_requests.py).
+support_requests.configure(
+    send_email=lambda *args, **kwargs: _send_email(*args, **kwargs),
+    group_emails=lambda *args, **kwargs: _group_emails(*args, **kwargs),
+    support_email=SUPPORT_EMAIL,
+)
+app.register_blueprint(support_requests.bp)
 # The customer's own loan journey, read from LAS (customer_journey.py).
 app.register_blueprint(customer_journey.bp)
 app.register_blueprint(invoice_versions.bp)

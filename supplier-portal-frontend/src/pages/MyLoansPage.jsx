@@ -5,7 +5,7 @@ import AppShell from '../components/layout/AppShell'
 import PageContainer from '../components/layout/PageContainer'
 import Button from '../components/common/Button'
 import Loader from '../components/common/Loader'
-import JourneySteps from '../components/loans/JourneySteps'
+import LoanTracker from '../components/loans/LoanTracker'
 import LoanDocumentDialog from '../components/loans/LoanDocumentDialog'
 import { DrawdownCard, InvoiceCard, SanctionCard } from '../components/loans/LoanCards'
 import { getMyLoans } from '../api/vendorApi'
@@ -17,7 +17,7 @@ const card = 'rounded-xl border border-[#d8e0e9] bg-white shadow-[0_4px_16px_rgb
 // Before there is anything to show: onboarding not approved yet, or approved but not yet set up for loans.
 function EmptyState({ active, stage }) {
   return (
-    <section className={`${card} px-5 py-12 text-center`}>
+    <section className={`${card} px-5 py-8 text-center`}>
       <span className="mx-auto grid size-12 place-items-center rounded-full bg-brand-50 text-brand-600"><Landmark size={24} /></span>
       <p className="mt-3 text-sm font-bold text-navy-900">{active ? 'Your loan account is being set up.' : 'Your loans will appear here once your onboarding is approved.'}</p>
       <p className="mx-auto mt-1 max-w-sm text-xs leading-5 text-slate-500">
@@ -38,12 +38,12 @@ function EmptyState({ active, stage }) {
 function Section({ icon: Icon, title, items, empty, notice, children }) {
   return (
     <section aria-labelledby={`loans-${title}`} className="min-w-0">
-      <h2 id={`loans-${title}`} className="mb-2 flex items-center gap-2 px-1 text-[13px] font-extrabold text-[#000000]">
+      <h2 id={`loans-${title}`} className="mb-1.5 flex items-center gap-2 px-1 text-[13px] font-extrabold text-[#000000]">
         <Icon size={16} className="text-brand-600" /> {title}
         {items.length > 0 && <span className="rounded-full bg-[#eef2fb] px-2 py-0.5 text-[11px] font-bold text-brand-700">{items.length}</span>}
       </h2>
       {notice && <p role="status" className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">{notice}</p>}
-      {items.length ? <div className="grid gap-3 xl:grid-cols-2">{children}</div> : <p className={`${card} px-4 py-5 text-xs text-slate-500`}>{empty}</p>}
+      {items.length ? <div className="grid gap-2">{children}</div> : <p className={`${card} px-3.5 py-3 text-xs text-slate-500`}>{empty}</p>}
     </section>
   )
 }
@@ -70,19 +70,19 @@ export default function MyLoansPage() {
 
   const active = stage === STAGES.active
   return (
-    <AppShell breadcrumb="My loans">
-      <PageContainer className="pb-6">
-        <div className="flex flex-wrap items-end justify-between gap-3 pt-1">
+    <AppShell breadcrumb="Loans & Sanctions">
+      <PageContainer className="pb-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg font-extrabold text-[#000000]">My loans</h1>
-            <p className="mt-1 text-xs text-[#5f5f5f]">Follow your loan from application to invoices, and keep a copy of every document.</p>
+            <h1 className="text-base font-extrabold text-[#000000]">Loans &amp; Sanctions</h1>
+            <p className="text-xs text-[#5f5f5f]">Follow your loan from application to invoices, and keep a copy of every document.</p>
           </div>
           {journey?.onboarded && (
-            <Button variant="secondary" className="px-4! text-[13px]!" onClick={load} disabled={loading}>{loading ? <Loader /> : <RefreshCw size={16} />} Refresh</Button>
+            <Button variant="secondary" className="min-h-9! px-3! text-[12.5px]!" onClick={load} disabled={loading}>{loading ? <Loader /> : <RefreshCw size={16} />} Refresh</Button>
           )}
         </div>
 
-        <div className="mt-4">
+        <div className="mt-3">
           {loading && !journey ? (
             <div role="status" className="flex items-center gap-2 px-1 text-sm font-semibold text-slate-600"><Loader /> Loading your loans…</div>
           ) : error && !journey ? (
@@ -93,15 +93,12 @@ export default function MyLoansPage() {
           ) : !journey?.onboarded ? (
             <EmptyState active={active} stage={stage} />
           ) : (
-            <div className="grid gap-5 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] lg:items-start">
-              <section className={`${card} p-4 lg:sticky lg:top-20`} aria-labelledby="loans-journey">
-                <h2 id="loans-journey" className="mb-3 text-[13px] font-extrabold text-[#000000]">Your journey</h2>
-                {journey.customerName && <p className="-mt-2 mb-3 break-words text-xs text-slate-500">{journey.customerName}{journey.customerNo ? ` · Customer No. ${journey.customerNo}` : ''}</p>}
-                <JourneySteps steps={journey.steps} />
-              </section>
+            <div className="grid gap-3">
+              {journey.customerNo && <p className="-mb-2 break-words text-xs text-slate-500">{journey.customerName ? `${journey.customerName} · ` : ''}Customer No. {journey.customerNo}</p>}
+              <LoanTracker journey={journey} />
 
-              <div className="grid min-w-0 gap-5">
-                {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
+              <div className="grid min-w-0 gap-3 xl:grid-cols-3 xl:items-start">
+                {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 xl:col-span-3">{error}</p>}
                 <Section icon={FileCheck2} title="Sanctions" items={journey.sanctions} empty="No loan application yet. Your relationship manager raises it for you.">
                   {journey.sanctions.map((s) => <SanctionCard key={s.id} sanction={s} onView={setViewing} />)}
                 </Section>

@@ -258,7 +258,7 @@ export default function InvoiceList({ invoices, isLoading = false, error = '', u
   return (
     <>
       <section className={`shrink-0 overflow-hidden rounded-xl border border-[#d8e0e9] bg-white shadow-[0_4px_16px_rgba(40,83,130,0.04)] ${filterOpen ? 'min-h-[440px]' : ''}`}>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-0 pt-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 pb-0 pt-3 sm:px-5">
           <div className="flex items-center gap-2">
             <h2 className="text-[13px] font-extrabold text-[#000000]">Invoice Inbox</h2>
             <span className="grid min-w-5 place-items-center rounded-full bg-[#f1f4f8] px-1.5 py-0.5 text-[11px] font-bold text-[#0046dc]">{invoices.length}</span>
@@ -266,25 +266,25 @@ export default function InvoiceList({ invoices, isLoading = false, error = '', u
         </div>
 
         {/* Buttons/inputs get `font: inherit` from index.css, so size is set on the parent and weight on an inner span. */}
-        <div className="mt-3 flex gap-2 overflow-x-auto px-4 text-xs sm:px-5" role="tablist" aria-label="Uploaded by">
+        <div className="mt-2 flex gap-2 overflow-x-auto px-4 text-xs sm:px-5" role="tablist" aria-label="Uploaded by">
           {SOURCE_TABS.map(([value, label]) => (
-            <button key={value} type="button" role="tab" aria-selected={sourceFilter === value} onClick={() => setSourceFilter(value)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 transition ${sourceFilter === value ? 'border-[#0046dc] bg-[#0046dc] text-white' : 'border-[#c2cdda] bg-white text-[#5f5f5f] hover:border-[#0046dc] hover:text-[#0046dc]'}`}>
+            <button key={value} type="button" role="tab" aria-selected={sourceFilter === value} onClick={() => setSourceFilter(value)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 transition ${sourceFilter === value ? 'border-[#0046dc] bg-[#0046dc] text-white' : 'border-[#c2cdda] bg-white text-[#5f5f5f] hover:border-[#0046dc] hover:text-[#0046dc]'}`}>
               <span className={sourceFilter === value ? 'font-bold' : 'font-medium'}>{label}</span>
               <span className={`rounded-full px-1.5 text-[10px] font-bold ${sourceFilter === value ? 'bg-white/20 text-white' : 'bg-[#f1f4f8] text-[#0046dc]'}`}>{sourceCounts[value]}</span>
             </button>
           ))}
         </div>
 
-        <div className="mt-2 flex gap-5 overflow-x-auto border-b border-[#d8e0e9] px-4 text-xs sm:px-5">
+        <div className="mt-1 flex gap-5 overflow-x-auto border-b border-[#d8e0e9] px-4 text-xs sm:px-5">
           {filters.map(([value, label]) => (
-            <button key={value} type="button" onClick={() => setFilter(value)} className={`shrink-0 border-b-2 px-0.5 py-2.5 transition ${filter === value ? 'border-[#0046dc] text-[#0046dc]' : 'border-transparent text-[#5f5f5f] hover:text-[#0046dc]'}`}>
+            <button key={value} type="button" onClick={() => setFilter(value)} className={`shrink-0 border-b-2 px-0.5 py-2 transition ${filter === value ? 'border-[#0046dc] text-[#0046dc]' : 'border-transparent text-[#5f5f5f] hover:text-[#0046dc]'}`}>
               <span className={filter === value ? 'font-bold' : 'font-medium'}>{label}</span>
               {value === 'correction' && correctionCount > 0 && <span className="ml-1.5 inline-block min-w-[17px] rounded-full bg-[#bf4252] px-[5px] text-center align-middle text-[10.5px] font-bold leading-[17px] text-white">{correctionCount}</span>}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-b border-[#d8e0e9] bg-[#fbfcfe] px-4 py-2.5 sm:px-5">
+        <div className="flex items-center justify-between gap-3 border-b border-[#d8e0e9] bg-[#fbfcfe] px-4 py-2 sm:px-5">
           <label className="relative block w-full max-w-[340px] text-xs">
             <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#5f5f5f]" />
             <span className="sr-only">Search invoices</span>
@@ -324,7 +324,7 @@ export default function InvoiceList({ invoices, isLoading = false, error = '', u
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center gap-2 px-6 py-16 text-sm font-semibold text-slate-600"><LoaderCircle size={18} className="animate-spin text-brand-600" /> Loading invoices...</div>
+          <div className="flex items-center justify-center gap-2 px-6 py-10 text-sm font-semibold text-slate-600"><LoaderCircle size={18} className="animate-spin text-brand-600" /> Loading invoices...</div>
         ) : error ? (
           <div role="alert" className="m-5 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-4 text-sm font-semibold text-red-800"><AlertCircle size={18} /> {error}</div>
         ) : invoices.length === 0 ? (
@@ -335,15 +335,15 @@ export default function InvoiceList({ invoices, isLoading = false, error = '', u
               <table className="w-full min-w-[1280px] border-collapse text-left">
                 <thead className="bg-[#f7f9fc] text-[9px] font-extrabold uppercase tracking-[0.04em] text-[#5f5f5f]">
                   <tr>
-                    {sortHeader('vendor', 'Customer', 'px-5 py-3')}
-                    {sortHeader('uploadedBy', 'Uploaded By', 'px-4 py-3')}
-                    {sortHeader('invoiceNo', 'Invoice No.', 'px-4 py-3')}
-                    {sortHeader('invoiceDate', 'Invoice Date', 'px-4 py-3')}
-                    {sortHeader('dueDate', 'Due Date', 'px-4 py-3')}
-                    {sortHeader('paymentTerm', 'Payment Term', 'px-4 py-3')}
-                    {sortHeader('amount', 'Amount', 'px-4 py-3 text-right', 'right')}
-                    {sortHeader('status', 'Status', 'px-4 py-3')}
-                    <th className="px-5 py-3 text-center">Actions</th>
+                    {sortHeader('vendor', 'Customer', 'px-5 py-2')}
+                    {sortHeader('uploadedBy', 'Uploaded By', 'px-4 py-2')}
+                    {sortHeader('invoiceNo', 'Invoice No.', 'px-4 py-2')}
+                    {sortHeader('invoiceDate', 'Invoice Date', 'px-4 py-2')}
+                    {sortHeader('dueDate', 'Due Date', 'px-4 py-2')}
+                    {sortHeader('paymentTerm', 'Payment Term', 'px-4 py-2')}
+                    {sortHeader('amount', 'Amount', 'px-4 py-2 text-right', 'right')}
+                    {sortHeader('status', 'Status', 'px-4 py-2')}
+                    <th className="px-5 py-2 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f1f4f8]">
@@ -352,7 +352,7 @@ export default function InvoiceList({ invoices, isLoading = false, error = '', u
                     const canPreview = invoice.source === 'api' || Boolean(invoice.url)
                     return (
                       <tr key={invoice.id} className="transition hover:bg-[#eef2fb]/35">
-                        <td className="px-5 py-3 align-middle">
+                        <td className="px-5 py-2 align-middle">
                           <button type="button" title="View customer details" onClick={() => setVendorInfo(invoice)} className="block max-w-64 truncate text-left text-xs font-bold text-[#474747] transition hover:text-[#0046dc] hover:underline" style={LINK_XS_BOLD}>{vendorName(invoice)}</button>
                           {vendorGstin(invoice) && (
                             <p className="mt-1 flex items-center gap-1 text-[9px] font-medium tracking-[0.04em] text-[#5f5f5f]">
@@ -361,23 +361,23 @@ export default function InvoiceList({ invoices, isLoading = false, error = '', u
                             </p>
                           )}
                         </td>
-                        <td className="max-w-40 truncate px-4 py-3 text-xs text-[#000000]">{uploadedByLabel(invoice, uploadedBy)}</td>
-                        <td className="px-4 py-3 text-xs text-[#000000]">
+                        <td className="max-w-40 truncate px-4 py-2 text-xs text-[#000000]">{uploadedByLabel(invoice, uploadedBy)}</td>
+                        <td className="px-4 py-2 text-xs text-[#000000]">
                           {canPreview
                             ? <button type="button" title="View invoice" onClick={() => openPreview(invoice)} className="text-left text-xs text-[#000000] transition hover:text-[#0046dc] hover:underline" style={LINK_XS}>{display(invoiceNumber(invoice))}</button>
                             : display(invoiceNumber(invoice))}
                         </td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-[#000000]">{dateValue(pick(invoice, ['invoice_date']))}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-xs text-[#000000]">{dateValue(pick(invoice, ['due_date']))}</td>
-                        <td className="px-4 py-3 text-xs text-[#000000]">{display(pick(invoice, ['payment_term', 'payment_terms']))}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-right text-xs font-extrabold text-[#000000]">{amount(totalValue(invoice), pick(invoice, ['currency'], 'INR'))}</td>
-                        <td className="px-4 py-3">
+                        <td className="whitespace-nowrap px-4 py-2 text-xs text-[#000000]">{dateValue(pick(invoice, ['invoice_date']))}</td>
+                        <td className="whitespace-nowrap px-4 py-2 text-xs text-[#000000]">{dateValue(pick(invoice, ['due_date']))}</td>
+                        <td className="px-4 py-2 text-xs text-[#000000]">{display(pick(invoice, ['payment_term', 'payment_terms']))}</td>
+                        <td className="whitespace-nowrap px-4 py-2 text-right text-xs font-extrabold text-[#000000]">{amount(totalValue(invoice), pick(invoice, ['currency'], 'INR'))}</td>
+                        <td className="px-4 py-2">
                           <span className={`inline-flex rounded-md px-2.5 py-1 text-[10px] font-bold ${status.tone}`}>•&nbsp; {status.label}</span>
                           {Number(invoice.submission_round) > 0 && (
                             <span title={`Replaced ${invoice.submission_round} ${Number(invoice.submission_round) === 1 ? 'time' : 'times'}. Open the invoice to see the earlier versions.`} className="ml-1.5 inline-flex rounded-md border border-[#b3c3e4] bg-[#eef2fb] px-1.5 py-0.5 text-[10px] font-bold text-[#052e86]">v{Number(invoice.submission_round) + 1}</span>
                           )}
                         </td>
-                        <td className="px-5 py-3">
+                        <td className="px-5 py-2">
                           <div className="flex items-center justify-center gap-1.5">
                             {/* The same actions on every row of a tab, in the same places; Replace is greyed out unless the invoice needs correction. */}
                             <ActionButton title={canPreview ? 'View invoice' : 'Preview unavailable'} disabled={!canPreview} onClick={() => openPreview(invoice)}><Eye size={15} /></ActionButton>
@@ -454,7 +454,7 @@ function ActionButton({ children, title, onClick, disabled = false, danger = fal
 // The same empty state as the enterprise tables: an inbox icon with a title and a line of detail.
 function EmptyState({ title, detail }) {
   return (
-    <div className="flex min-h-[200px] flex-col items-center justify-center gap-2.5 px-6 py-7 text-center text-[#8a94a6]">
+    <div className="flex min-h-[140px] flex-col items-center justify-center gap-2 px-6 py-5 text-center text-[#8a94a6]">
       <Inbox size={26} strokeWidth={1.5} />
       <p className="text-[13px] font-bold text-[#5f5f5f]">{title}</p>
       <p className="max-w-[360px] text-xs text-[#5f5f5f]">{detail}</p>

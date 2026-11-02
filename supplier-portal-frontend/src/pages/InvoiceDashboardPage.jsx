@@ -27,7 +27,7 @@ export default function InvoiceDashboardPage() {
   }, [])
 
   return (
-    <AppShell breadcrumb="Invoices">
+    <AppShell breadcrumb="Invoice Management">
       <PageContainer wide className="vendor-workspace h-full">
         <div className="mx-auto flex h-full max-w-[1820px] min-h-0 flex-col gap-3 overflow-y-auto px-1 pb-3 sm:px-2">
           {renewalReady && (
@@ -37,7 +37,7 @@ export default function InvoiceDashboardPage() {
             </Link>
           )}
           <div className="shrink-0 px-1">
-            <h1 className="text-base font-extrabold text-[#000000]">Invoices</h1>
+            <h1 className="text-base font-extrabold text-[#000000]">Invoice Management</h1>
             <p className="text-xs text-[#5f5f5f]">Upload your invoices and track their extraction status, amounts and dates. Invoices uploaded on your behalf by your Relationship Manager also appear here.</p>
             {!isLoading && !loadError && invoices.length > 0 && <div className="mt-2"><InvoiceKpis invoices={invoices} /></div>}
           </div>

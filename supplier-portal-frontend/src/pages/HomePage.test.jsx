@@ -4,6 +4,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import AppRoutes from '../routes/AppRoutes'
 import * as api from '../api/vendorApi'
+import { clearFinanceCache } from '../utils/finance'
+import { FINANCE, NOTIFICATIONS } from '../test/financeFixture'
 
 /*
  * The shell and Home through the real routes, auth provider and route guards, with the backend calls stubbed at the
@@ -16,6 +18,9 @@ vi.mock('../api/vendorApi', async (importOriginal) => ({
   getMyHome: vi.fn(),
   getMyLoans: vi.fn(),
   getMyActivity: vi.fn(),
+  getMyFinance: vi.fn(),
+  getMyNotifications: vi.fn(),
+  markNotificationsRead: vi.fn(async () => ({ marked: 1 })),
   getMyAgreements: vi.fn(async () => []),
   getRenewal: vi.fn(async () => null),
   getMyDocuments: vi.fn(async () => []),
@@ -55,10 +60,12 @@ beforeEach(() => {
   api.getMyHome.mockResolvedValue(HOME)
   api.getMyLoans.mockResolvedValue(LOANS)
   api.getMyActivity.mockResolvedValue(ACTIVITY)
+  api.getMyFinance.mockResolvedValue(FINANCE)
+  api.getMyNotifications.mockResolvedValue(NOTIFICATIONS)
 })
-afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
+afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks(); clearFinanceCache() })
 
-const kpi = (label) => screen.getByRole('heading', { name: label }).parentElement
+const kpi = (label) => screen.getByRole('heading', { name: label }).closest('article')
 
 describe('Home', () => {
   it('is where an active customer lands, and shows their own figures', async () => {
@@ -70,9 +77,15 @@ describe('Home', () => {
     expect(within(kpi('Approved invoices')).getByText('1')).toBeTruthy()
     // A real zero is shown as 0.
     expect(within(kpi('Open change requests')).getByText('0')).toBeTruthy()
-    const loans = screen.getByRole('region', { name: /Loans & Sanctions/ })
-    expect(within(loans).getByText('₹50,00,000.00')).toBeTruthy() // only the approved sanction's limit
-    expect(within(loans).getAllByText('1')).toHaveLength(3) // approved sanctions, drawdowns approved, under review
+    // The financial overview is LAS's own figures, as sent.
+    const overview = screen.getByRole('region', { name: 'Financial overview' })
+    expect(within(kpi('Total sanctioned')).getByText('₹50,00,000.00')).toBeTruthy()
+    expect(within(kpi('Total outstanding')).getByText('₹10,04,857.53')).toBeTruthy()
+    expect(within(kpi('Overdue amount')).getByText('₹4,857.53')).toBeTruthy()
+    expect(within(overview).getByText('Due 31 Jan 2099')).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'Loan utilisation' })).toBeTruthy()
+    // Loan events join the activity feed.
+    expect(screen.getAllByText('Payment confirmed').length).toBeGreaterThan(0)
     expect(screen.getByText('Loan customer no.').nextSibling.textContent).toBe('100440')
     expect(screen.getByText('Invoice returned to you for correction')).toBeTruthy()
     expect(screen.getByText('1 invoice needs correction')).toBeTruthy()
@@ -95,25 +108,33 @@ describe('Home', () => {
     expect(screen.queryByText(/View agreement/)).toBeNull()
   })
 
-  it('keeps working when the loans cannot be read, and retries on request', async () => {
-    api.getMyLoans.mockRejectedValueOnce(new Error('Your loan details can’t be loaded right now.'))
+  it('keeps working when the loan figures cannot be read, and retries on request', async () => {
+    api.getMyFinance.mockRejectedValueOnce(new Error('Your loan details can’t be loaded right now.'))
     await renderAt('/home')
-    const loans = screen.getByRole('region', { name: /Loans & Sanctions/ })
-    expect(within(loans).getByRole('alert').textContent).toMatch(/Your loans can’t be shown right now/)
+    const alert = screen.getByText(/Your loan figures can’t be shown right now/)
     expect(within(kpi('Total invoices')).getByText('5')).toBeTruthy()
-    await act(async () => { fireEvent.click(within(loans).getByRole('button', { name: /Try again/ })) })
-    expect(within(loans).getByText('₹50,00,000.00')).toBeTruthy()
-    expect(api.getMyLoans).toHaveBeenCalledTimes(2)
+    await act(async () => { fireEvent.click(within(alert).getByRole('button', { name: /Try again/ })) })
+    expect(within(kpi('Total sanctioned')).getByText('₹50,00,000.00')).toBeTruthy()
+    expect(api.getMyFinance).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows a figure LAS could not read as unavailable, never zero', async () => {
+    api.getMyFinance.mockResolvedValue({ ...FINANCE, schedule: null, summary: { ...FINANCE.summary, outstanding: null, overdue: null, nextDue: null }, available: { ...FINANCE.available, schedule: false } })
+    await renderAt('/home')
+    expect(within(kpi('Total outstanding')).getByText('Unavailable')).toBeTruthy()
+    expect(within(kpi('Overdue amount')).getByText('Unavailable')).toBeTruthy()
+    expect(within(kpi('Total outstanding')).queryByText('₹0.00')).toBeNull()
   })
 })
 
 describe('Shell', () => {
-  it('lists the sections with Home current', async () => {
+  it('lists the sections with the Dashboard current', async () => {
     await renderAt('/home')
     const sidebar = screen.getByRole('complementary', { name: 'Sections' })
     const names = within(sidebar).getAllByRole('link').map((a) => a.textContent.trim())
-    expect(names).toEqual(['Home', 'Loans & Sanctions', 'Invoices', 'Change Requests', 'Support', 'Contact support'])
-    expect(within(sidebar).getByRole('link', { name: 'Home' }).getAttribute('aria-current')).toBe('page')
+    expect(names).toEqual(['Dashboard', 'My Loans & Sanctions', 'Drawdown History', 'Repayment Schedule', 'Cashflow & Transactions',
+      'Invoice Management', 'Payments & Receipts', 'Documents', 'Change Requests', 'Help & Support', 'Contact support'])
+    expect(within(sidebar).getByRole('link', { name: 'Dashboard' }).getAttribute('aria-current')).toBe('page')
     expect(within(sidebar).getByRole('button', { name: 'Profile' })).toBeTruthy()
   })
 
@@ -126,7 +147,7 @@ describe('Shell', () => {
   it('reaches Support from the sidebar and names the relationship manager', async () => {
     await renderAt('/home')
     const sidebar = screen.getByRole('complementary', { name: 'Sections' })
-    await act(async () => { fireEvent.click(within(sidebar).getByRole('link', { name: 'Support' })) })
+    await act(async () => { fireEvent.click(within(sidebar).getByRole('link', { name: 'Help & Support' })) })
     expect(screen.getByTestId('where').textContent).toBe('/support')
     expect(screen.getByText('Priya Nair')).toBeTruthy()
   })

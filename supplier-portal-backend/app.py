@@ -21,7 +21,9 @@ import agreement_hold
 import agreements
 import auth
 import customer_home
+import customer_finance
 import customer_journey
+import notifications_feed
 import demat
 import invoice_versions
 import las_integration
@@ -2503,6 +2505,10 @@ support_requests.configure(
 app.register_blueprint(support_requests.bp)
 # The customer's own loan journey, read from LAS (customer_journey.py).
 app.register_blueprint(customer_journey.bp)
+# The customer's money with LAS and its statements (customer_finance.py).
+app.register_blueprint(customer_finance.bp)
+# The header bell (notifications_feed.py).
+app.register_blueprint(notifications_feed.bp)
 app.register_blueprint(invoice_versions.bp)
 app.register_blueprint(phone_verification.bp)
 

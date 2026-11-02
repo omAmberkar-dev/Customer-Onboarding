@@ -6,6 +6,7 @@ import PageContainer from '../components/layout/PageContainer'
 import Button from '../components/common/Button'
 import Loader from '../components/common/Loader'
 import LoanTracker from '../components/loans/LoanTracker'
+import FacilitiesPanel from '../components/loans/FacilitiesPanel'
 import LoanDocumentDialog from '../components/loans/LoanDocumentDialog'
 import { DrawdownCard, InvoiceCard, SanctionCard } from '../components/loans/LoanCards'
 import { getMyLoans } from '../api/vendorApi'
@@ -95,6 +96,7 @@ export default function MyLoansPage() {
           ) : (
             <div className="grid gap-3">
               {journey.customerNo && <p className="-mb-2 break-words text-xs text-slate-500">{journey.customerName ? `${journey.customerName} · ` : ''}Customer No. {journey.customerNo}</p>}
+              <FacilitiesPanel />
               <LoanTracker journey={journey} />
 
               <div className="grid min-w-0 gap-3 xl:grid-cols-3 xl:items-start">

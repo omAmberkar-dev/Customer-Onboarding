@@ -4,6 +4,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '../routes/AppRoutes'
 import * as api from '../api/vendorApi'
+import { clearFinanceCache } from '../utils/finance'
+import { FINANCE, NOTIFICATIONS } from '../test/financeFixture'
 
 /*
  * Loans & Sanctions with the loan tracker, through the real routes, on a journey shaped as LAS's customer journey API
@@ -13,6 +15,8 @@ vi.mock('../api/vendorApi', async (importOriginal) => ({
   ...(await importOriginal()),
   getVendorProfile: vi.fn(async () => ({ vendor_id: 85, name: 'Neekhat A', stage: 'active' })),
   getMyLoans: vi.fn(),
+  getMyFinance: vi.fn(),
+  getMyNotifications: vi.fn(),
   getRenewal: vi.fn(async () => null),
   getMyDocuments: vi.fn(async () => []),
   getUpdateRequests: vi.fn(async () => []),
@@ -37,8 +41,12 @@ async function renderLoans() {
 const phase = (title) => screen.getByRole('heading', { level: 3, name: title }).closest('li')
 
 // Braces matter: a function returned from beforeEach is run by Vitest as a cleanup hook.
-beforeEach(() => { api.getMyLoans.mockResolvedValue(LAS_JOURNEY) })
-afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks() })
+beforeEach(() => {
+  api.getMyLoans.mockResolvedValue(LAS_JOURNEY)
+  api.getMyFinance.mockResolvedValue(FINANCE)
+  api.getMyNotifications.mockResolvedValue(NOTIFICATIONS)
+})
+afterEach(() => { cleanup(); localStorage.clear(); vi.clearAllMocks(); clearFinanceCache() })
 
 describe('Loan tracker', () => {
   it('shows the four phases with the current one marked, and the totals', async () => {

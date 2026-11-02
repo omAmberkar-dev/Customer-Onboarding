@@ -3,7 +3,7 @@ import { NAV_ITEMS, SUPPORT_EMAIL, isActivePath } from './navigation'
 import { displayName, greetingName } from '../../utils/customer'
 
 // Every route the sidebar can send a customer to must exist (src/routes/AppRoutes.jsx).
-const ROUTES = ['/home', '/loans', '/invoices', '/update-requests', '/support']
+const ROUTES = ['/home', '/loans', '/drawdowns', '/repayments', '/cashflow', '/invoices', '/payments', '/documents', '/update-requests', '/support']
 
 describe('navigation', () => {
   it('links only to routes that exist; Profile opens the panel', () => {
@@ -11,7 +11,8 @@ describe('navigation', () => {
       if (item.profile) expect(item.to).toBeUndefined()
       else expect(ROUTES).toContain(item.to)
     }
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(['Home', 'Loans & Sanctions', 'Invoices', 'Change Requests', 'Profile', 'Support'])
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(['Dashboard', 'My Loans & Sanctions', 'Drawdown History', 'Repayment Schedule', 'Cashflow & Transactions',
+      'Invoice Management', 'Payments & Receipts', 'Documents', 'Change Requests', 'Profile', 'Help & Support'])
   })
 
   it('has no entry point into the Agreement section for this release', () => {
@@ -22,7 +23,7 @@ describe('navigation', () => {
   })
 
   it('marks the active item', () => {
-    const invoices = NAV_ITEMS.find((i) => i.label === 'Invoices')
+    const invoices = NAV_ITEMS.find((i) => i.label === 'Invoice Management')
     expect(isActivePath(invoices, '/invoices')).toBe(true)
     expect(isActivePath(invoices, '/home')).toBe(false)
     expect(isActivePath(NAV_ITEMS.find((i) => i.profile), '/anything')).toBe(false)

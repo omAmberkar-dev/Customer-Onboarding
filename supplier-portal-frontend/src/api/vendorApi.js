@@ -656,3 +656,38 @@ export async function fetchLoanDocumentUrl(kind, id) {
 export async function downloadLoanDocument(kind, id, fileName) {
   savePdf(await loanDocumentBlob(kind, id), fileName)
 }
+
+// ---- Money with LAS -------------------------------------------------------------------------------------------------
+// The customer's facilities, drawdowns, dues, payments and transactions as LAS records them (the backend reads them from
+// LAS's customer finance API): { onboarded, facilities, drawdowns, schedule, payments, transactions, summary, available }.
+// A section LAS could not read is null and false in `available` (never zeros).
+export const getMyFinance = () => agreementCall('/vendors/me/finance', undefined, 'Unable to load your loan figures. Please try again.')
+
+// A statement of one section ('transactions', 'schedule' or 'payments') as 'pdf' or 'xlsx', with the screen's filters
+// ({ from, to, disbursement, type, status }); saved under the name the backend gives it.
+export async function downloadStatement(section, format, filters = {}) {
+  const query = new URLSearchParams({ section, format })
+  Object.entries(filters).forEach(([key, value]) => { if (value) query.set(key, value) })
+  let response
+  try {
+    response = await authFetch(`/vendors/me/finance/statement?${query}`)
+  } catch {
+    throw new Error('Unable to download the statement. Please try again.')
+  }
+  if (!response.ok) throw await agreementError(response, 'Unable to download the statement. Please try again.')
+  const name = /filename="([^"]+)"/.exec(response.headers.get('Content-Disposition') || '')?.[1] || `${section}-statement.${format}`
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 10000)
+}
+
+// The header bell: { items: [{ id, kind, tone, title, detail, on, to, read }], unread, readState, unavailable }.
+export const getMyNotifications = () => agreementCall('/vendors/me/notifications', undefined, 'Unable to load your notifications.')
+// Marks bell items read: ids, or every current item when ids is 'all'.
+export const markNotificationsRead = (ids) =>
+  agreementCall('/vendors/me/notifications/read', jsonRequest('POST', ids === 'all' ? { all: true } : { ids }), 'Unable to update your notifications.')

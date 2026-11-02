@@ -30,4 +30,7 @@ const blobProxy = () => ({
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), blobProxy()],
+  // The page tests render the whole app through its routes; under a full parallel run the first test of a file can
+  // pass 5 s (Vitest's default) on a busy machine, so they get more time.
+  test: { testTimeout: 15000 },
 })

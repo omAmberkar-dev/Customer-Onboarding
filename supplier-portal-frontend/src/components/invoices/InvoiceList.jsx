@@ -249,8 +249,8 @@ export default function InvoiceList({ invoices, isLoading = false, error = '', u
 
   const filters = [
     ['all', 'All Status'],
-    ['processing', 'Processing'],
-    ['correction', 'Needs correction'],
+    ['processing', 'Under review'],
+    ['correction', 'Returned for correction'],
     ['approved', 'Approved'],
     ['rejected', 'Rejected'],
   ]

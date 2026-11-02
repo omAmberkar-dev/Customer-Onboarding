@@ -7,6 +7,11 @@ import ApplicationStatusPage from '../pages/ApplicationStatusPage'
 import AgreementSigningPage from '../pages/AgreementSigningPage'
 import AgreementsPage from '../pages/AgreementsPage'
 import MyLoansPage from '../pages/MyLoansPage'
+import CashflowPage from '../pages/CashflowPage'
+import DrawdownHistoryPage from '../pages/DrawdownHistoryPage'
+import RepaymentSchedulePage from '../pages/RepaymentSchedulePage'
+import PaymentsPage from '../pages/PaymentsPage'
+import DocumentsPage from '../pages/DocumentsPage'
 import HomePage from '../pages/HomePage'
 import SupportPage from '../pages/SupportPage'
 import VerifyAgreementPage from '../pages/VerifyAgreementPage'
@@ -22,6 +27,11 @@ export default function AppRoutes() {
         <Route path="/" element={<LoginPage />} />
         <Route path="/home" element={<ProtectedRoute stages={[STAGES.active]}><HomePage /></ProtectedRoute>} />
         <Route path="/support" element={<ProtectedRoute stages={[STAGES.active]}><SupportPage /></ProtectedRoute>} />
+        <Route path="/drawdowns" element={<ProtectedRoute stages={[STAGES.active]}><DrawdownHistoryPage /></ProtectedRoute>} />
+        <Route path="/repayments" element={<ProtectedRoute stages={[STAGES.active]}><RepaymentSchedulePage /></ProtectedRoute>} />
+        <Route path="/cashflow" element={<ProtectedRoute stages={[STAGES.active]}><CashflowPage /></ProtectedRoute>} />
+        <Route path="/payments" element={<ProtectedRoute stages={[STAGES.active]}><PaymentsPage /></ProtectedRoute>} />
+        <Route path="/documents" element={<ProtectedRoute stages={[STAGES.active]}><DocumentsPage /></ProtectedRoute>} />
         <Route path="/invoices" element={<ProtectedRoute stages={[STAGES.active]}><InvoiceDashboardPage /></ProtectedRoute>} />
         <Route path="/update-requests" element={<ProtectedRoute stages={[STAGES.active]}><UpdateRequestsPage /></ProtectedRoute>} />
         <Route path="/request-vendor" element={<ProtectedRoute stages={FORM_STAGES}><VendorRequestPage /></ProtectedRoute>} />

@@ -5,6 +5,7 @@ import AppLogo from '../common/AppLogo'
 import useAuth from '../../hooks/useAuth'
 import VendorProfilePanel from './VendorProfilePanel'
 import AgreementBanner from './AgreementBanner'
+import NotificationBell from './NotificationBell'
 import { NAV_ITEMS, SUPPORT_EMAIL, isActivePath } from './navigation'
 import { OPEN_PROFILE_EVENT } from '../../utils/events'
 import { STAGES, WAITING_STAGES, homeForStage } from '../../utils/stages'
@@ -100,6 +101,8 @@ export default function AppShell({ breadcrumb, children, backTo, onBack }) {
                 <Landmark size={17} />
               </Link>
             )}
+            {/* Every signed-in customer follows each stage of their workflows here, onboarding included. */}
+            {user && <NotificationBell />}
             <UserMenu name={name} canViewProfile={canViewProfile} onProfile={openProfile} onSignOut={handleSignOut} />
           </div>
         </div>

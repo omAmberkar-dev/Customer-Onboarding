@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowRight, BadgeCheck, CalendarClock, ChevronRight, Clock3, FileCheck2, FilePlus2, FileText, Handshake, Landmark,
-  LifeBuoy, Replace, RefreshCw, UserRound, Wallet,
+  AlertTriangle, ArrowRight, BadgeCheck, Banknote, CalendarClock, ChevronRight, Clock3, FileCheck2, FilePlus2, FileText,
+  Handshake, Landmark, LifeBuoy, Replace, RefreshCw, Scale, UserRound, Wallet,
 } from 'lucide-react'
 import AppShell from '../components/layout/AppShell'
 import PageContainer from '../components/layout/PageContainer'
 import Loader from '../components/common/Loader'
+import { KpiCard as FinanceKpi, Panel } from '../components/finance/FinanceUi'
+import { MonthlyChart, UtilisationChart } from '../components/finance/Charts'
 import { getMyActivity, getMyHome, getMyLoans } from '../api/vendorApi'
 import useAuth from '../hooks/useAuth'
 import { greetingName } from '../utils/customer'
 import { formatLoanDate, formatMoney } from '../utils/loans'
-import { daysFrom, inDays, loansSummary, upcomingItems } from '../utils/home'
+import { instalmentsOf, useFinance } from '../utils/finance'
+import { daysFrom, inDays, upcomingItems } from '../utils/home'
 import { OPEN_PROFILE_EVENT } from '../utils/events'
 
 const card = 'rounded-xl border border-[#d8e0e9] bg-white shadow-[0_4px_16px_rgba(40,83,130,0.04)]'
@@ -58,41 +61,63 @@ function KpiCard({ icon: Icon, tone, label, value, to, linkLabel, unavailable })
   )
 }
 
-// Loans at a glance (utils/home.js loansSummary): counting and adding only.
-function LoansSummary({ loans }) {
-  const { data, error, loading, reload } = loans
-  let body
-  if (loading && !data) body = <p className="flex items-center gap-2 text-xs text-slate-600"><Loader /> Loading your loans…</p>
-  else if (error) body = <Unavailable what="Your loans" onRetry={reload} />
-  else if (!data?.onboarded) body = <p className="text-xs text-slate-600">Your loan account is being set up. Your sanctions and drawdowns will appear here.</p>
-  else {
-    const s = loansSummary(data)
-    const facts = [
-      ['Approved sanctions', String(s.approvedSanctions)],
-      ['Sanctioned limit', s.limit !== null ? formatMoney(s.limit, s.currency) : s.approvedSanctions ? 'Several currencies' : '—'],
-      ['Drawdowns approved', String(s.drawdownsApproved)],
-      ['Drawdowns under review', String(s.drawdownsInReview)],
-    ]
-    body = (
-      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {facts.map(([term, value]) => (
-          <div key={term} className="min-w-0 rounded-lg bg-[#f7f9fc] px-2.5 py-1.5">
-            <dt className="truncate text-[11px] font-semibold text-slate-500">{term}</dt>
-            <dd className="break-words text-sm font-extrabold text-navy-950">{value}</dd>
-          </div>
-        ))}
-      </dl>
-    )
-  }
+// The financial overview (Dashboard = Financial Overview): LAS's own figures, each "Unavailable" when its source was
+// not read, never a zero in its place.
+function FinanceOverview({ finance }) {
+  const { data, error, loading, reload } = finance
+  if (loading && !data) return <p className="flex items-center gap-2 px-1 text-xs text-slate-600"><Loader /> Loading your loan figures…</p>
+  if (error) return <Unavailable what="Your loan figures" onRetry={reload} />
+  if (!data?.onboarded) return <p className={`${card} px-3.5 py-3 text-xs text-slate-600`}>Your loan account is being set up. Your facilities and figures will appear here once it is ready.</p>
+  const s = data.summary
+  const next = s.nextDue
   return (
-    <section className={`${card} px-3.5 py-3`} aria-labelledby="home-loans">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <h2 id="home-loans" className="flex items-center gap-2 text-sm font-extrabold text-navy-950"><Landmark size={16} className="text-brand-600" /> Loans &amp; Sanctions</h2>
-        <Link to="/loans" className="inline-flex min-h-7 items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">View loans <ArrowRight size={13} /></Link>
-      </div>
-      {body}
+    <section aria-label="Financial overview" className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+      <FinanceKpi label="Total sanctioned" value={formatMoney(s.sanctioned)} caption={`${data.facilities.length} approved facilit${data.facilities.length === 1 ? 'y' : 'ies'}`} icon={Landmark} />
+      <FinanceKpi label="Total disbursed" value={formatMoney(s.disbursed)} caption="Posted payouts" icon={Banknote} tone="navy" unavailable={!data.available.flows} />
+      <FinanceKpi label="Total outstanding" value={formatMoney(s.outstanding)} caption="Principal + dues already due" icon={Scale} tone="amber" unavailable={s.outstanding === null} />
+      <FinanceKpi label="Available limit" value={formatMoney(s.available)} caption="Drawing power, less pending" icon={Wallet} tone="green" />
+      <FinanceKpi label="Upcoming payment" value={next ? formatMoney(next.total) : '—'} caption={next ? `Due ${formatLoanDate(next.date)}` : 'Nothing scheduled'} icon={CalendarClock} unavailable={next === null} />
+      <FinanceKpi label="Overdue amount" value={formatMoney(s.overdue)} caption={s.overdue ? 'Past its due date' : 'Nothing overdue'} icon={AlertTriangle} tone={s.overdue ? 'red' : 'green'} unavailable={s.overdue === null} />
     </section>
   )
+}
+
+// Upcoming obligations: the next instalments not yet paid, principal, interest and charges apart.
+function Obligations({ finance }) {
+  const schedule = finance.data?.schedule
+  const today = new Date().toISOString().slice(0, 10)
+  const rows = schedule ? instalmentsOf(schedule).filter((r) => r.outstanding > 0 && r.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 4) : []
+  return (
+    <Panel title="Upcoming obligations" subtitle="Your next instalments" action={<Link to="/repayments" className="inline-flex min-h-7 items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Schedule <ArrowRight size={13} /></Link>}>
+      {!finance.data?.onboarded ? <p className="text-xs text-slate-500">Nothing scheduled yet.</p>
+        : schedule === null ? <p className="text-xs text-slate-500">Your schedule can’t be shown right now.</p>
+          : rows.length === 0 ? <p className="rounded-lg bg-[#f7f9fc] px-3 py-3 text-center text-xs text-slate-500">No upcoming instalments.</p>
+            : (
+              <ul className="grid gap-1.5">
+                {rows.map((r) => (
+                  <li key={r.id} className="rounded-lg border border-[#eef1f5] px-2.5 py-1.5">
+                    <div className="flex items-center justify-between gap-2 text-[12.5px]"><b className="text-navy-900">{formatLoanDate(r.dueDate)}</b><b className="tabular-nums text-navy-950">{formatMoney(r.outstanding)}</b></div>
+                    <p className="truncate text-[11px] text-slate-500">{r.disbursementNo} · principal {formatMoney(r.principal)} · interest {formatMoney(r.interest)}{r.charges ? ` · charges ${formatMoney(r.charges)}` : ''}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+    </Panel>
+  )
+}
+
+// What LAS records as loan activity, in the activity feed's shape: drawdowns approved, money disbursed, payments.
+function financeEvents(data) {
+  if (!data?.onboarded) return []
+  const events = []
+  for (const d of data.drawdowns || []) {
+    if (d.approvedOn) events.push({ at: d.approvedOn, category: 'loan', title: 'Drawdown approved', reference: d.applicationNo })
+    if (d.disbursedOn) events.push({ at: d.disbursedOn, category: 'loan', title: `${formatMoney(d.disbursedAmount, d.currency)} disbursed`, reference: d.disbursementNo })
+  }
+  for (const p of data.payments || []) {
+    events.push({ at: p.paymentDate, category: 'payment', title: ['confirmed', 'allocated'].includes(p.status) ? 'Payment confirmed' : p.status === 'pending' ? 'Payment received, being verified' : 'Payment not accepted', reference: p.reference || p.receiptNo })
+  }
+  return events
 }
 
 const CATEGORY = {
@@ -101,13 +126,15 @@ const CATEGORY = {
   change_request: { icon: Replace, label: 'Change request', tone: 'bg-violet-50 text-violet-700' },
   onboarding: { icon: BadgeCheck, label: 'Onboarding', tone: 'bg-amber-50 text-amber-700' },
   support: { icon: LifeBuoy, label: 'Support', tone: 'bg-sky-50 text-sky-700' },
+  loan: { icon: Banknote, label: 'Loan', tone: 'bg-[#e6edff] text-[#002880]' },
+  payment: { icon: Wallet, label: 'Payment', tone: 'bg-emerald-50 text-emerald-700' },
 }
 
-function RecentActivity() {
+function RecentActivity({ finance }) {
   const [limit, setLimit] = useState(5)
   const load = useCallback(() => getMyActivity(limit), [limit])
   const { data, error, loading, reload } = useSection(load)
-  const events = data?.events || []
+  const events = data ? [...data.events, ...financeEvents(finance)].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, limit) : []
   return (
     <section className={`${card} min-w-0 px-3.5 py-3`} aria-labelledby="home-activity">
       <div className="mb-1.5 flex items-center justify-between gap-3">
@@ -209,6 +236,7 @@ export default function HomePage() {
   const { profile, user } = useAuth()
   const home = useSection(getMyHome)
   const loans = useSection(getMyLoans)
+  const finance = useFinance()
   const h = home.data
   const unavailable = (key) => Boolean(home.error) || Boolean(h?.unavailable?.includes(key))
 
@@ -236,6 +264,8 @@ export default function HomePage() {
           </section>
         </div>
 
+        <FinanceOverview finance={finance} />
+
         {home.error && <Unavailable what="Your summary" onRetry={home.reload} />}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <KpiCard icon={FileText} tone="bg-brand-50 text-brand-700" label="Total invoices" value={h?.invoices?.total ?? '…'} to="/invoices" linkLabel="View all invoices" unavailable={unavailable('invoices')} />
@@ -247,10 +277,18 @@ export default function HomePage() {
         {/* Left: loans and activity; right: what needs attention and the quick actions, so no band sits below. */}
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-start">
           <div className="grid min-w-0 gap-3">
-            <LoansSummary loans={loans} />
-            <RecentActivity />
+            {finance.data?.onboarded && (
+              <div className="grid min-w-0 gap-3 2xl:grid-cols-2">
+                <Panel title="Loan utilisation" subtitle="Sanctioned limit, utilised and available, by facility"><UtilisationChart facilities={finance.data.facilities} /></Panel>
+                <Panel title="Monthly financial activity" subtitle="Posted inflows and outflows" action={<Link to="/cashflow" className="inline-flex min-h-7 items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Cashflow <ArrowRight size={13} /></Link>}>
+                  <MonthlyChart monthly={finance.data.summary.monthly} height={160} />
+                </Panel>
+              </div>
+            )}
+            <RecentActivity finance={finance.data} />
           </div>
           <div className="grid min-w-0 gap-3">
+            <Obligations finance={finance} />
             <Upcoming home={home} loans={loans} />
             <QuickActions />
           </div>

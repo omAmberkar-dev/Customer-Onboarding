@@ -11,7 +11,7 @@ const defaults = {
   registeredAddress1: '', registeredCity: '', registeredDistrict: '', registeredState: '', registeredPostalCode: '',
   pan: '', gstin: '', aadhaar: '', cin: '',
   dematId: '', dpId: '', boId: '', depository: '',
-  accountHolderName: '', bankName: '', branchName: '', accountNumber: '', ifsc: '',
+  accountHolderName: '', bankName: '', branchName: '', accountNumber: '', confirmAccountNumber: '', ifsc: '',
   accurateDeclaration: false, termsDeclaration: false,
 }
 
@@ -27,7 +27,8 @@ const TAKEN_RULES = [
 export default function useVendorRequest(vendor) {
   const takenRef = useRef({ pan: '' })
   const schemaResolver = useRef(zodResolver(vendorRequestSchema)).current
-  const initialValues = useRef({ ...defaults, ...toFormValues(vendor) }).current
+  // A saved account number was confirmed when it was entered, so it starts confirmed; a new or changed one is typed twice.
+  const initialValues = useRef((() => { const values = { ...defaults, ...toFormValues(vendor) }; return { ...values, confirmAccountNumber: values.accountNumber } })()).current
 
   const resolver = async (values, context, options) => {
     const result = await schemaResolver(values, context, options)

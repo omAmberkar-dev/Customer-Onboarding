@@ -10,7 +10,9 @@
   --vr-blue: var(--primary);
   --vr-line: var(--border);
   --vr-muted: var(--text-muted);
-  --vr-canvas: #f6f8fb;
+  /* The tinted ground the white cards sit on, and the tint of each card's title bar (the portal's brand blue, soft). */
+  --vr-canvas: #e6edfb;
+  --vr-head-tint: #f2f6fe;
   --vr-danger: var(--danger);
   --vr-danger-soft: #fdf0ef;
   --vr-danger-border: #f3c4bf;
@@ -173,7 +175,9 @@
   justify-content: space-between;
   gap: 12px;
   padding: 8px 14px;
-  border-bottom: 1px solid #edf1f6;
+  border-bottom: 1px solid #dfe7f6;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--vr-head-tint);
 }
 .vr-section-head h2 {
   display: flex;

@@ -52,7 +52,7 @@ const FORM_VALUES = {
   gstin: '27AABCO1234F1Z5', pan: 'AABCO1234F', aadhaar: '', cin: 'U74999MH2014PTC123456',
   dematId: '', dpId: '', boId: '', depository: '',
   registeredAddress1: '12 Marine Drive', registeredCity: 'Mumbai', registeredDistrict: 'Mumbai', registeredState: 'Maharashtra', registeredPostalCode: '400020',
-  accountHolderName: 'Osprey Security Solutions', bankName: 'HDFC Bank', branchName: 'Fort', accountNumber: '123456789012', ifsc: 'HDFC0001234',
+  accountHolderName: 'Osprey Security Solutions', bankName: 'HDFC Bank', branchName: 'Fort', accountNumber: '123456789012', confirmAccountNumber: '123456789012', ifsc: 'HDFC0001234',
 }
 
 // Under a full parallel run the form's checks (PAN availability, saving) can take longer than Testing Library's 1 s default.

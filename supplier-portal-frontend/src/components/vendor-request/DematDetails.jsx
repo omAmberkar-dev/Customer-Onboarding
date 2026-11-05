@@ -2,13 +2,12 @@ import Input from '../common/Input'
 import SelectMenu from '../common/SelectMenu'
 import FormSection from './FormSection'
 import { VERIFIED_CHIP, VerifyButton } from './VerifyControls'
-import { DEMAT_EXAMPLES, DEPOSITORIES } from '../../utils/demat'
+import { DEPOSITORIES } from '../../utils/demat'
 
 // The vendor's demat account, if they have one: all optional, but any ID needs its depository. Verifying the Demat ID fills in
 // the DP ID, BO ID and depository (useDematVerification, kept by the page). Locked, like the vendor information, until the
 // contact details are done.
 export default function DematDetails({ register, errors, watch, setValue, demat, disabled = false }) {
-  const example = DEMAT_EXAMPLES[watch('depository')] || DEMAT_EXAMPLES['']
   const dematIdFilled = Boolean(watch('dematId')?.trim())
   const dematHint = demat.verified ? demat.message : demat.loading ? 'Verifying the Demat ID…' : '8–16 letters or digits. Verify to fill in the DP ID, BO ID and depository.'
 
@@ -22,7 +21,6 @@ export default function DematDetails({ register, errors, watch, setValue, demat,
           register={register}
           error={errors.dematId || (demat.failed ? { message: demat.message } : undefined)}
           hint={dematHint}
-          placeholder="12081600"
           maxLength={20}
           autoComplete="off"
           action={demat.verified ? VERIFIED_CHIP : (
@@ -36,7 +34,6 @@ export default function DematDetails({ register, errors, watch, setValue, demat,
           register={register}
           error={errors.dpId}
           hint="8 letters or digits"
-          placeholder={example.dpId}
           maxLength={10}
           autoComplete="off"
         />
@@ -47,7 +44,6 @@ export default function DematDetails({ register, errors, watch, setValue, demat,
           register={register}
           error={errors.boId}
           hint="16 letters or digits"
-          placeholder={example.boId}
           maxLength={20}
           autoComplete="off"
         />

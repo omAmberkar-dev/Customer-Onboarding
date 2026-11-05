@@ -9,7 +9,7 @@ export const vendorRequestSchema = z.object({
   registeredAddress1: required('Address'), registeredDistrict: required('District'), registeredCity: required('City'), registeredState: required('State'), registeredPostalCode: required('Postal code'),
   pan: required('PAN'), gstin: z.string().optional(), aadhaar: z.string().optional(), cin: z.string().optional(),
   dematId: z.string().optional(), dpId: z.string().optional(), boId: z.string().optional(), depository: z.string().optional(),
-  accountHolderName: required('Account holder name'), bankName: required('Bank name'), branchName: required('Branch name'), accountNumber: required('Account number').regex(/^\d{9,18}$/, 'Enter a valid 9–18 digit account number (digits only)'), ifsc: required('IFSC code'),
+  accountHolderName: required('Account holder name'), bankName: required('Bank name'), branchName: required('Branch name'), accountNumber: required('Account number').regex(/^\d{9,18}$/, 'Enter a valid 9–18 digit account number (digits only)'), confirmAccountNumber: required('Confirm account number'), ifsc: required('IFSC code'),
   accurateDeclaration: z.boolean(), termsDeclaration: z.boolean(),
 }).superRefine((data, ctx) => {
   const add = (path, message) => ctx.addIssue({ code: 'custom', path: [path], message })
@@ -23,6 +23,7 @@ export const vendorRequestSchema = z.object({
   const phoneRule = phoneRuleFor(data.vendorPhoneCode)
   if (data.vendorPhone?.trim() && !phoneRule.pattern.test(data.vendorPhone.replace(/\s/g, ''))) add('vendorPhone', phoneRule.message)
   if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(data.ifsc || '')) add('ifsc', 'Enter a valid IFSC, e.g. HDFC0001234')
+  if (data.confirmAccountNumber?.trim() && data.confirmAccountNumber.trim() !== data.accountNumber?.trim()) add('confirmAccountNumber', 'The account numbers do not match')
   Object.entries(DEMAT_RULES).forEach(([name, [pattern, message]]) => { if (dematText(data[name]) && !pattern.test(dematText(data[name]))) add(name, message) })
   if (!data.depository && DEMAT_ID_FIELDS.some((name) => dematText(data[name]))) add('depository', 'Select the depository (CDSL or NSDL)')
 })

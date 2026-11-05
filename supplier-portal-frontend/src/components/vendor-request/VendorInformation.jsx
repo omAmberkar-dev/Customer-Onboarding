@@ -265,7 +265,6 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           inputMode="numeric"
           register={register}
           error={errors.yearEstablished}
-          placeholder="2014"
         />
         <SelectMenu
           className="vr-field"

@@ -12,7 +12,7 @@ export default function BankDetails({ register, errors }) {
         <ShieldAlert size={16} aria-hidden="true" />
         <span>Double-check the account number and IFSC code: they must match your bank proof exactly.</span>
       </p>
-      {/* LAS's order: holder, bank and IFSC on the first line; the account number and the branch on the next. */}
+      {/* LAS's order: holder, bank and IFSC on the first line; the account number, its confirmation and the branch on the next. */}
       <div className="vr-grid">
         <Input
           className="vr-field"
@@ -38,7 +38,7 @@ export default function BankDetails({ register, errors }) {
           name="ifsc"
           register={register}
           error={errors.ifsc}
-          hint="11 characters, e.g. HDFC0001234"
+          hint="11 characters"
           required
         />
         <Input
@@ -61,6 +61,20 @@ export default function BankDetails({ register, errors }) {
               {showAccountNumber ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           )}
+          required
+        />
+        {/* Typed again, never pasted, so a slip in either entry shows up. Stays masked while the first one is. */}
+        <Input
+          className="vr-field"
+          label="Confirm account number"
+          name="confirmAccountNumber"
+          type={showAccountNumber ? 'text' : 'password'}
+          inputMode="numeric"
+          register={register}
+          error={errors.confirmAccountNumber}
+          autoComplete="new-password"
+          onPaste={(event) => event.preventDefault()}
+          onDrop={(event) => event.preventDefault()}
           required
         />
         <Input className="vr-field" label="Branch name" name="branchName" register={register} error={errors.branchName} required />

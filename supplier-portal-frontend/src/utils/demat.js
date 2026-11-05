@@ -11,9 +11,3 @@ export const DEMAT_RULES = {
   boId: [/^[A-Z0-9]{16}$/, 'Enter a valid BO ID: 16 letters or digits'],
 }
 
-// Placeholders follow the depository chosen.
-export const DEMAT_EXAMPLES = {
-  NSDL: { dpId: 'IN300214', boId: 'IN30021412345678' },
-  CDSL: { dpId: '12081600', boId: '1208160012345678' },
-  '': { dpId: 'IN300214 or 12081600', boId: '1208160012345678' },
-}

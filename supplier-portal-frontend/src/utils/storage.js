@@ -4,6 +4,7 @@ const SENSITIVE_KEYS = [
   'bankName',
   'branchName',
   'accountNumber',
+  'confirmAccountNumber',
   'ifsc',
 ]
 

@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, FileSpreadsheet, RefreshCw, Search } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Download, FileSpreadsheet, RefreshCw, Search, X } from 'lucide-react'
 import Loader from '../common/Loader'
 import { downloadStatement } from '../../api/vendorApi'
 import { label, toneOf } from '../../utils/finance'
 
 export const card = 'rounded-xl border border-[#d8e0e9] bg-white shadow-[0_4px_16px_rgba(40,83,130,0.04)]'
+// A row of four KPI cards: two across on a phone (compact, less scrolling), four on a wide screen.
+export const KPI_GRID = 'grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4'
 
 // The reference KPI card (LAS StatCard): a dot and label, an icon tile, the figure, a caption, and an accent rail.
 const KPI_TONE = {
@@ -17,14 +19,14 @@ const KPI_TONE = {
 export function KpiCard({ label: name, value, caption, icon: Icon, tone = 'blue', unavailable = false }) {
   const [accent, tile] = KPI_TONE[tone] || KPI_TONE.blue
   return (
-    <article className={`${card} relative min-w-0 overflow-hidden px-3.5 pb-3 pt-2.5`}>
+    <article className={`${card} relative min-w-0 overflow-hidden px-3 pb-3 pt-2.5 sm:px-3.5`}>
       <div className="flex items-start justify-between gap-2">
         <h3 className="flex min-w-0 items-center gap-1.5 text-[11.5px] font-semibold text-slate-600"><i className={`size-1.5 shrink-0 rounded-full ${accent}`} aria-hidden="true" /><span className="truncate">{name}</span></h3>
         <span className={`grid size-7 shrink-0 place-items-center rounded-lg ${tile}`}><Icon size={15} aria-hidden="true" /></span>
       </div>
       {unavailable
         ? <p className="mt-0.5 text-[13px] font-semibold text-slate-500">Unavailable</p>
-        : <p className="mt-0.5 break-words text-lg font-extrabold leading-6 text-navy-950">{value}</p>}
+        : <p className="mt-0.5 break-words text-[15px] font-extrabold leading-6 text-navy-950 sm:text-lg">{value}</p>}
       {caption && <p className="mt-0.5 truncate text-[11px] text-slate-500" title={caption}>{caption}</p>}
       <span className={`absolute inset-x-0 bottom-0 h-[3px] ${accent} opacity-80`} aria-hidden="true" />
     </article>
@@ -38,9 +40,42 @@ const PILL = {
   red: 'border-red-200 bg-red-50 text-red-700',
   grey: 'border-slate-200 bg-slate-50 text-slate-600',
 }
-export const StatusPill = ({ status }) => (
-  <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${PILL[toneOf(status)]}`}>{label(status)}</span>
+export const StatusPill = ({ status, text }) => (
+  <span className={`inline-flex whitespace-nowrap rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${PILL[toneOf(status)]}`}>{text || label(status)}</span>
 )
+
+// A record's details: a sheet from the bottom on a phone, a centred dialog from tablet up. Closes on Escape and outside.
+export function Drawer({ title, titleId, status, onClose, children, wide = false }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-slate-950/40 sm:items-center sm:p-4" role="presentation" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className={`max-h-[90svh] w-full ${wide ? 'max-w-2xl' : 'max-w-lg'} overflow-y-auto rounded-t-xl bg-white p-4 shadow-2xl sm:rounded-xl`}>
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id={titleId} className="break-words text-sm font-extrabold text-navy-950">{title}</h2>
+            {status && <div className="mt-1 flex flex-wrap gap-1">{status}</div>}
+          </div>
+          <button type="button" onClick={onClose} className="interactive-icon" aria-label="Close"><X size={18} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+// Label / value pairs, two across.
+export const Facts = ({ rows }) => (
+  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-[12.5px]">
+    {rows.map(([term, value]) => <div key={term} className="min-w-0"><dt className="text-[10.5px] font-bold uppercase tracking-[0.04em] text-slate-500">{term}</dt><dd className="break-words font-semibold text-navy-900">{value}</dd></div>)}
+  </dl>
+)
+
+// A small heading inside a drawer.
+export const SubHeading = ({ children }) => <h3 className="mb-1 mt-3 text-[11px] font-bold uppercase tracking-[0.05em] text-slate-500">{children}</h3>
 
 export function Panel({ title, subtitle, action, children, className = '', id }) {
   const headingId = id || `panel-${String(title).toLowerCase().replace(/\W+/g, '-')}`

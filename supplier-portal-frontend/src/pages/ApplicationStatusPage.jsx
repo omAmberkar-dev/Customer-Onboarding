@@ -38,8 +38,17 @@ const SIGNED_STEPS = [
   { title: 'Customer account ready', detail: 'Your account is created and invoices are unlocked.' },
 ]
 
+// The steps while the application is back with the customer for corrections.
+const CORRECTION_STEPS = [
+  { title: 'Application submitted', detail: 'We have received your details and documents.' },
+  { title: 'Review', detail: 'Our team checked your details and found something to correct.' },
+  { title: 'Correction required', detail: 'Correct what our team flagged in your application form.' },
+  { title: 'Resubmit for review', detail: 'Your corrected application goes back to our team.' },
+]
+
 // How many steps are complete for each stage; the next one is "in progress".
 const COMPLETED_STEPS = {
+  [STAGES.returned]: 2,
   [STAGES.makerReview]: 1,
   [STAGES.checkerReview]: 2,
   [STAGES.approved]: 3,
@@ -54,7 +63,11 @@ const HEADLINES = {
   [STAGES.approved]: ['Approved: setting up your account', 'Your application is approved. We’re creating your customer account, which can take a little while.'],
   [STAGES.rejected]: ['Your application was not approved', 'Please contact support to discuss next steps.'],
   [STAGES.changeRequested]: ['Your change request has been sent', 'Our team will send your application back to you so you can make the changes yourself. You will get an email, and this page updates on its own.'],
+  [STAGES.returned]: ['Correction Required', 'Our team reviewed your application and needs a few corrections before it can continue. Correct the details below in your application form and resubmit it.'],
 }
+
+// Which review sent it back, in the customer's words (the reviewer's name never reaches the portal).
+const RETURNED_BY = { maker: 'Returned after our first review', checker: 'Returned after our final review' }
 
 const formatDate = (value) => {
   const date = value ? new Date(value) : null
@@ -77,7 +90,8 @@ export default function ApplicationStatusPage() {
   const rejected = stage === STAGES.rejected
   const changeRequested = stage === STAGES.changeRequested
   const signed = stage === STAGES.agreementSigned
-  const steps = changeRequested ? CHANGE_STEPS : signed ? SIGNED_STEPS : STEPS
+  const returned = stage === STAGES.returned
+  const steps = returned ? CORRECTION_STEPS : changeRequested ? CHANGE_STEPS : signed ? SIGNED_STEPS : STEPS
   const requestedFields = profile?.change_request?.fields || []
   const completed = COMPLETED_STEPS[stage] ?? 0
   const [headline, subline] = HEADLINES[stage] || HEADLINES[STAGES.makerReview]
@@ -135,6 +149,9 @@ export default function ApplicationStatusPage() {
 
   const reasons = profile?.rejection?.items || []
   const overallRemark = profile?.rejection?.overall_remark
+  // Returns already corrected and resubmitted, newest first (GET /vendors/me `correction_history`).
+  const pastCorrections = profile?.correction_history || []
+  const round = profile?.submission_round || 0
 
   // `open` rows open what was submitted.
   const details = [
@@ -142,7 +159,7 @@ export default function ApplicationStatusPage() {
     ...(rejected ? [['Request ID', `VR-${profile?.vendor_id}`]] : []),
     ['Customer', vendorName, true],
     ['Submitted', formatDate(profile?.submitted_at)],
-    ['Status', rejected ? 'Not approved' : changeRequested ? 'Change requested' : signed ? 'Agreement signed' : 'In review'],
+    ['Status', rejected ? 'Not approved' : returned ? 'Correction Required' : changeRequested ? 'Change requested' : signed ? 'Agreement signed' : 'In review'],
   ]
 
   return (
@@ -152,16 +169,19 @@ export default function ApplicationStatusPage() {
       <div className="flex min-h-full items-center justify-center py-6">
       <PageContainer className="max-w-4xl">
         <section className="overflow-hidden rounded-2xl border border-[#b3c3e4]/80 bg-white shadow-[0_22px_60px_rgba(40,83,130,0.1)]">
-          <div className={`px-5 py-4 sm:px-7 ${rejected ? 'bg-red-50' : 'bg-[#eef2fb]'}`}>
+          <div className={`px-5 py-4 sm:px-7 ${rejected ? 'bg-red-50' : returned ? 'bg-amber-50' : 'bg-[#eef2fb]'}`}>
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-2.5">
-                <span className={`grid size-9 shrink-0 place-items-center rounded-full ${rejected ? 'bg-red-100 text-red-700' : 'bg-brand-100 text-brand-700'}`}>
-                  {rejected ? <AlertCircle size={20} /> : signed ? <FileSignature size={20} /> : changeRequested ? <PencilLine size={20} /> : <Clock3 size={20} />}
+                <span className={`grid size-9 shrink-0 place-items-center rounded-full ${rejected ? 'bg-red-100 text-red-700' : returned ? 'bg-amber-100 text-amber-800' : 'bg-brand-100 text-brand-700'}`}>
+                  {rejected || returned ? <AlertCircle size={20} /> : signed ? <FileSignature size={20} /> : changeRequested ? <PencilLine size={20} /> : <Clock3 size={20} />}
                 </span>
-                <p className="eyebrow">{rejected ? 'Application closed' : changeRequested ? 'Change request' : signed ? 'Agreement' : 'Application status'}</p>
+                <p className="eyebrow">{rejected ? 'Application closed' : returned ? 'Correction required' : changeRequested ? 'Change request' : signed ? 'Agreement' : 'Application status'}</p>
               </div>
-              {(profile?.submission_round || 0) > 1 && !rejected && !changeRequested && !signed && (
-                <p className="shrink-0 rounded-full border border-[#b3c3e4] bg-white px-3 py-1 text-xs font-bold text-brand-700">Resubmitted application</p>
+              {returned && (
+                <p className="shrink-0 rounded-full border border-amber-300 bg-white px-3 py-1 text-xs font-bold text-amber-800">Correction Required</p>
+              )}
+              {round > 1 && !rejected && !returned && !changeRequested && !signed && (
+                <p className="shrink-0 rounded-full border border-[#b3c3e4] bg-white px-3 py-1 text-xs font-bold text-brand-700">Resubmitted · round {round}</p>
               )}
             </div>
             <h1 className="mt-2 text-xl font-extrabold tracking-[-0.03em] text-navy-950 sm:text-2xl">{headline}</h1>
@@ -254,6 +274,56 @@ export default function ApplicationStatusPage() {
                   </ul>
                 </section>
               )}
+              {returned && (
+                <section className="mt-2.5 overflow-hidden rounded-lg border border-amber-200 bg-white" aria-label="What to correct">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 border-b border-amber-100 bg-amber-50 px-4 py-2.5">
+                    <h2 className="text-[10px] font-bold uppercase tracking-[0.08em] text-amber-900">What to correct</h2>
+                    {RETURNED_BY[profile?.rejection?.rejected_by_role] && (
+                      <p className="text-[11px] text-amber-900">{RETURNED_BY[profile.rejection.rejected_by_role]} · {formatDate(profile.rejection.rejected_at)}</p>
+                    )}
+                  </div>
+                  <ul className="divide-y divide-slate-100">
+                    {overallRemark && (
+                      <li className="grid gap-0.5 px-4 py-3 sm:grid-cols-[11rem_1fr] sm:gap-4">
+                        <span className="text-xs font-bold text-navy-900">Note from our team</span>
+                        <span className="whitespace-pre-line text-xs leading-5 text-slate-700">{overallRemark}</span>
+                      </li>
+                    )}
+                    {reasons.map((item) => (
+                      <li key={item.item_id} className="grid gap-0.5 px-4 py-3 sm:grid-cols-[11rem_1fr] sm:gap-4">
+                        <span className="text-xs font-bold text-navy-900">{item.field_label}</span>
+                        <span className="text-xs leading-5 text-slate-700">
+                          {item.reason_label}{item.remark && <span className="text-slate-500"> ({item.remark})</span>}
+                          {item.fixed && <span className="ml-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Updated</span>}
+                        </span>
+                      </li>
+                    ))}
+                    {!overallRemark && reasons.length === 0 && (
+                      <li className="px-4 py-3 text-xs leading-5 text-slate-700">Open your application form to see what needs correcting.</li>
+                    )}
+                  </ul>
+                </section>
+              )}
+              {pastCorrections.length > 0 && !rejected && (
+                <details className="mt-2.5 rounded-lg border border-slate-200 bg-white">
+                  <summary className="cursor-pointer px-4 py-2.5 text-xs font-bold text-navy-900">Earlier corrections ({pastCorrections.length})</summary>
+                  <ul className="divide-y divide-slate-100 border-t border-slate-100">
+                    {pastCorrections.map((past) => (
+                      <li key={`${past.round_no}-${past.rejected_at}`} className="px-4 py-3 text-xs leading-5 text-slate-700">
+                        <p className="font-bold text-navy-900">Round {past.round_no} · returned {formatDate(past.rejected_at)} · resubmitted {formatDate(past.resubmitted_at)}</p>
+                        {past.overall_remark && <p className="whitespace-pre-line">{past.overall_remark}</p>}
+                        {past.items.length > 0 && (
+                          <ul className="mt-1 list-disc pl-4">
+                            {past.items.map((item) => (
+                              <li key={`${item.field_key}-${item.reason_label}`}>{item.field_label}: {item.reason_label}{item.remark && ` (${item.remark})`}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               {profile?.declined_agreement && stage === STAGES.checkerReview && (
                 <p className="mt-2.5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-700" role="note">
                   You declined the agreement on {formatDate(profile.declined_agreement.declined_at)}: “{profile.declined_agreement.reason}”. Our team will review it and send you an updated agreement.
@@ -264,6 +334,8 @@ export default function ApplicationStatusPage() {
                   <CheckCircle2 size={14} className="mr-1.5 inline -translate-y-px text-brand-600" />
                   {rejected
                     ? 'This application is closed and cannot be reopened. You can apply again with a new application. Questions? Write to support@fourthsignal.com and mention your request ID.'
+                    : returned
+                      ? 'Your application is waiting for your corrections. Open the form, correct what is flagged and resubmit it; it then goes back to our team for review.'
                     : changeRequested
                       ? 'Your application stays on hold until our team sends it back to you. You can cancel the request any time before then.'
                       : signed
@@ -271,7 +343,12 @@ export default function ApplicationStatusPage() {
                         : 'Your application is in progress. We’ll email you as soon as there is an update, and you can come back to this page any time.'}
                 </p>
                 {rejected && <Button className="shrink-0" onClick={startNewApplication}>Start a new application</Button>}
-                {!rejected && (
+                {returned && (
+                  <Button className="min-h-9! shrink-0 px-4! py-1.5! text-[13px]!" onClick={() => navigate('/request-vendor')}>
+                    <PencilLine size={15} /> Correct and resubmit
+                  </Button>
+                )}
+                {!rejected && !returned && (
                   <Button variant="secondary" className="min-h-9! shrink-0 px-4! py-1.5! text-[13px]!" onClick={refresh} disabled={refreshing}>
                     {refreshing ? <Loader /> : <RefreshCw size={15} />} Refresh status
                   </Button>
@@ -287,7 +364,7 @@ export default function ApplicationStatusPage() {
                     <FileSignature size={15} /> {signed ? 'View agreement' : 'Agreement history'}
                   </Button>
                 )}
-                {!rejected && !changeRequested && !signed && (
+                {!rejected && !returned && !changeRequested && !signed && (
                   <Button variant="secondary" className="min-h-9! w-full py-1.5! text-[13px]!" onClick={() => { setActionError(''); setRequestOpen(true) }}>
                     <PencilLine size={15} /> Request changes
                   </Button>

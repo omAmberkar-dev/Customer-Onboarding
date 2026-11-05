@@ -19,10 +19,11 @@ export default function AddressFields({ prefix, register, errors, watch, setValu
   })
 
   return (
-    // Two columns from tablet width up: the address takes the whole first row, then district + city, then state + PIN code.
-    <div className="grid gap-x-3.5 gap-y-3 md:grid-cols-2">
+    // LAS's order: the address across two columns with the PIN code beside it (it fills in what follows), then
+    // district, city and state. Two columns on a tablet, one on a phone.
+    <div className="vr-grid">
       <Input
-        className="md:col-span-2"
+        className="vr-field vr-span-2"
         label="Address"
         name={`${prefix}Address1`}
         register={register}
@@ -32,6 +33,18 @@ export default function AddressFields({ prefix, register, errors, watch, setValu
         required
       />
       <Input
+        className="vr-field vr-narrow"
+        label="Postal / PIN code"
+        name={postalName}
+        register={register}
+        error={errors[postalName]}
+        inputMode="numeric"
+        hint={pincodeStatusHint[pincodeStatus] || (lockedFields.includes(postalName) ? 'Filled automatically from GSTIN verification' : 'City and district fill in from the PIN code')}
+        locked={lockedFields.includes(postalName)}
+        required
+      />
+      <Input
+        className="vr-field"
         label="District / County"
         name={districtName}
         register={register}
@@ -39,6 +52,7 @@ export default function AddressFields({ prefix, register, errors, watch, setValu
         required
       />
       <Input
+        className="vr-field"
         label="City"
         name={cityName}
         register={register}
@@ -46,6 +60,7 @@ export default function AddressFields({ prefix, register, errors, watch, setValu
         required
       />
       <SelectMenu
+        className="vr-field"
         label="State"
         name={`${prefix}State`}
         register={register}
@@ -54,16 +69,6 @@ export default function AddressFields({ prefix, register, errors, watch, setValu
         error={errors[`${prefix}State`]}
         options={indianStates}
         locked={lockedFields.includes(`${prefix}State`)}
-        required
-      />
-      <Input
-        label="Postal / PIN code"
-        name={postalName}
-        register={register}
-        error={errors[postalName]}
-        inputMode="numeric"
-        hint={pincodeStatusHint[pincodeStatus] || (lockedFields.includes(postalName) ? 'Filled automatically from GSTIN verification' : 'City and district fill in from the PIN code')}
-        locked={lockedFields.includes(postalName)}
         required
       />
     </div>

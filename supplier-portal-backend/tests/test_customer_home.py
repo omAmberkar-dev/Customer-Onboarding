@@ -172,3 +172,28 @@ def test_activity_limit(client):
 def test_activity_before_onboarding_is_approved_has_no_invoice_or_change_request_events(client):
     body = client.get("/vendors/me/activity", headers=signed_in(85)).get_json()
     assert body == {"events": [], "unavailable": []}
+
+
+def test_activity_shows_the_application_rounds_and_only_the_final_approval_without_the_reviewer(client):
+    db = sqlite3.connect(client.db_path)
+    db.executemany("INSERT INTO audit_log (entity_type, entity_id, action, actor, before_value, after_value, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+        ("vendor", "86", "submitted", "vendor", '{"status": "registered"}', '{"status": "Pending", "round": 1}', "2026-09-23 09:00:00"),
+        ("vendor", "86", "returned_for_correction", "maker", '{"status": "Pending"}',
+         '{"status": "returned", "round": 1, "by": "Maker Mia", "remark": "Fix the PAN"}', "2026-09-24 09:00:00"),
+        ("vendor", "86", "resubmitted", "vendor", '{"status": "returned"}', '{"status": "Pending", "round": 2}', "2026-09-25 09:00:00"),
+        ("vendor", "86", "approval_recorded", "maker", '{"status": "Pending"}', '{"status": "01", "round": 2, "by": "Maker Mia"}', "2026-09-26 09:00:00"),
+        ("vendor", "86", "returned_to_maker", "checker", '{"status": "01"}', '{"status": "Pending", "by": "Checker Chandra"}', "2026-09-27 09:00:00"),
+        ("vendor", "86", "approval_recorded", "checker", '{"status": "01"}', '{"status": "active", "round": 2, "by": "Checker Chandra"}', "2026-09-28 09:00:00"),
+    ])
+    db.commit()
+    db.close()
+    r = client.get("/vendors/me/activity", headers=signed_in(86))
+    onboarding = [(e["title"], e["reference"]) for e in r.get_json()["events"] if e["category"] == "onboarding"]
+    assert onboarding[:4] == [
+        ("Application approved", None),
+        ("Corrected application resubmitted for review", "Round 2"),
+        ("Application returned to you for correction", None),
+        ("Application submitted", None),
+    ]
+    for hidden in ("Maker Mia", "Checker Chandra", "Fix the PAN", "maker", "checker"):
+        assert hidden not in r.get_data(as_text=True), hidden

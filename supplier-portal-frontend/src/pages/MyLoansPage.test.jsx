@@ -11,15 +11,13 @@ import { FINANCE, NOTIFICATIONS } from '../test/financeFixture'
  * Loans & Sanctions with the loan tracker, through the real routes, on a journey shaped as LAS's customer journey API
  * answers (its customer-journey.mjs), stubbed at the API module as isolated test data.
  */
-vi.mock('../api/vendorApi', async (importOriginal) => ({
-  ...(await importOriginal()),
+vi.mock('../api/vendorApi', async (importOriginal) => (await import('../test/vendorApiMock')).mockVendorApi(await importOriginal(), {
   getVendorProfile: vi.fn(async () => ({ vendor_id: 85, name: 'Neekhat A', stage: 'active' })),
   getMyLoans: vi.fn(),
   getMyFinance: vi.fn(),
   getMyNotifications: vi.fn(),
-  getRenewal: vi.fn(async () => null),
-  getMyDocuments: vi.fn(async () => []),
-  getUpdateRequests: vi.fn(async () => []),
+  fetchLoanDocumentUrl: vi.fn(async () => 'blob:loan-document'),
+  downloadLoanDocument: vi.fn(async () => {}),
 }))
 
 const LAS_JOURNEY = {
@@ -106,5 +104,38 @@ describe('Loan tracker', () => {
     expect(screen.queryAllByRole('alert').map((a) => a.textContent)).toEqual(['LAS unavailable (test)'])
     expect(screen.getByRole('button', { name: /Try again/ })).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Your loan journey' })).toBeNull()
+  })
+})
+
+describe('Your sanctions', () => {
+  const sanctions = () => screen.getByRole('table', { name: 'Your sanctions' })
+
+  it('lists each approved sanction with its ID, sanctioned, utilised and outstanding amounts and its drawdowns', async () => {
+    await renderLoans()
+    const [row] = within(sanctions()).getAllByRole('row').slice(1)
+    const cells = within(row).getAllByRole('cell').map((c) => c.textContent)
+    expect(cells.slice(0, 5)).toEqual(['100411', '₹50,00,000.00', '₹10,00,000.00', '₹10,00,000.00', '₹10,00,000.00'])
+    expect(within(row).getByRole('link', { name: '23000068, Request 502, Request 503' }).getAttribute('href')).toBe('/drawdowns')
+  })
+
+  it('says the outstanding can’t be shown when LAS could not work it out, never ₹0', async () => {
+    api.getMyFinance.mockResolvedValue({ ...FINANCE, facilities: [{ ...FINANCE.facilities[0], outstandingPrincipal: null }] })
+    await renderLoans()
+    const [row] = within(sanctions()).getAllByRole('row').slice(1)
+    expect(within(row).getByText('Can’t be shown')).toBeTruthy()
+    expect(within(row).queryByText('₹0.00')).toBeNull()
+  })
+
+  it('keeps the Sanction and Drawdown Memos here, now that Documents is off', async () => {
+    await renderLoans()
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Download Drawdown Memo' })) })
+    expect(api.downloadLoanDocument).toHaveBeenCalledWith('drawdown', '1000-5', 'Drawdown_Memo_23000068.pdf')
+    expect(screen.getByRole('button', { name: 'Download Sanction Memo' })).toBeTruthy()
+  })
+
+  it('says the sanction figures can’t be shown when the finance cannot be loaded', async () => {
+    api.getMyFinance.mockRejectedValue(new Error('down'))
+    await renderLoans()
+    expect(screen.getByText(/Your facility figures can’t be shown right now/)).toBeTruthy()
   })
 })

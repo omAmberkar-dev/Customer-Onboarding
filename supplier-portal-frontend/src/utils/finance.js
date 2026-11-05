@@ -28,21 +28,29 @@ export const monthLabel = (ym) => {
 // The words for LAS's codes, as the statements use them too (customer_finance.py LABELS).
 export const LABELS = {
   disbursement: 'Loan disbursement', principal_repayment: 'Principal repayment', interest_payment: 'Interest payment',
-  fee_payment: 'Fees and charges', payment: 'Payment', reversal: 'Reversal',
+  fee_payment: 'Fees and charges', payment: 'Payment', reversal: 'Reversal', interest_charge: 'Interest charged', fee_charge: 'Fees and GST charged',
   posted: 'Posted', scheduled: 'Scheduled', pending: 'Pending verification', rejected: 'Not accepted', cancelled: 'Cancelled',
   confirmed: 'Confirmed', allocated: 'Applied to dues',
   principal: 'Principal', interest: 'Interest', fee: 'Fees and charges', tax: 'GST',
   paid: 'Paid', overdue: 'Overdue', due: 'Due', partially_paid: 'Partially paid', upcoming: 'Upcoming',
   submitted: 'Submitted', pending_approval: 'Pending approval', approved: 'Approved', disbursed: 'Disbursed',
   active: 'Active', expired: 'Expired',
+  unallocated: 'Unallocated', partially_allocated: 'Partially allocated',
 }
 export const label = (code) => LABELS[code] || code || '—'
+
+// A receipt's allocation state (LAS allocationStatus) has its own words: there "allocated" means fully allocated.
+export const ALLOCATION_LABELS = {
+  pending_approval: 'Pending approval', unallocated: 'Unallocated', partially_allocated: 'Partially allocated', allocated: 'Allocated',
+  rejected: 'Not accepted', cancelled: 'Cancelled',
+}
 
 // Status pill colours: green done, blue in progress, amber needs attention soon, red overdue/refused, grey otherwise.
 const TONE = {
   posted: 'green', confirmed: 'green', allocated: 'green', paid: 'green', disbursed: 'green', approved: 'green', active: 'green',
   scheduled: 'blue', pending: 'blue', pending_approval: 'blue', submitted: 'blue', upcoming: 'blue', partially_paid: 'blue',
-  due: 'amber',
+  partially_allocated: 'blue', interest_charge: 'grey', fee_charge: 'grey',
+  due: 'amber', unallocated: 'amber', maker: 'amber', checker: 'blue',
   overdue: 'red', rejected: 'red',
   cancelled: 'grey', expired: 'grey',
 }
@@ -117,3 +125,35 @@ export function instalmentsOf(schedule) {
     return { ...g, principal: g.principal / 100, interest: g.interest / 100, charges: g.charges / 100, total: g.total / 100, paid: g.paid / 100, outstanding: g.outstanding / 100, status }
   })
 }
+
+// The schedule loan by loan: each sanction, then each of its drawdowns, then that drawdown's instalments, with what is
+// due, paid and still left at each level (added in paise). Sanctions and drawdowns in number order, instalments by date.
+export function scheduleBySanction(instalments) {
+  const sanctions = new Map()
+  for (const row of instalments || []) {
+    const sKey = row.sanctionNo || ''
+    const s = sanctions.get(sKey) || { sanctionNo: sKey, total: 0, paid: 0, outstanding: 0, drawdowns: new Map() }
+    const d = s.drawdowns.get(row.disbursementNo) || { disbursementNo: row.disbursementNo, total: 0, paid: 0, outstanding: 0, instalments: [] }
+    for (const g of [s, d]) for (const k of ['total', 'paid', 'outstanding']) g[k] += cents(row[k])
+    d.instalments.push(row)
+    s.drawdowns.set(row.disbursementNo, d)
+    sanctions.set(sKey, s)
+  }
+  const money = (g) => ({ ...g, total: g.total / 100, paid: g.paid / 100, outstanding: g.outstanding / 100 })
+  return [...sanctions.values()].sort((a, b) => a.sanctionNo.localeCompare(b.sanctionNo)).map((s) => ({
+    ...money(s),
+    drawdowns: [...s.drawdowns.values()].sort((a, b) => String(a.disbursementNo).localeCompare(String(b.disbursementNo)))
+      .map((d) => ({ ...money(d), instalments: [...d.instalments].sort((a, b) => a.dueDate.localeCompare(b.dueDate)) })),
+  }))
+}
+
+// A drawdown's approval as the customer follows it (LAS sends `approval` from the journey's stage): the maker raises it,
+// the checker approves or rejects it, and a return goes back to the maker. LAS has no authorizer step for a drawdown.
+export const APPROVAL_STEPS = [['maker', 'Maker'], ['checker', 'Checker'], ['approved', 'Approved']]
+export function approvalSteps(approval) {
+  if (!approval) return []
+  if (approval === 'rejected') return [['maker', 'Maker', 'done'], ['checker', 'Checker', 'done'], ['rejected', 'Rejected', 'stopped']]
+  const at = APPROVAL_STEPS.findIndex(([key]) => key === approval)
+  return APPROVAL_STEPS.map(([key, text], i) => [key, text, approval === 'approved' || i < at ? 'done' : i === at ? 'current' : 'upcoming'])
+}
+export const APPROVAL_LABELS = { maker: 'With the maker', checker: 'With the checker', approved: 'Approved', rejected: 'Rejected' }

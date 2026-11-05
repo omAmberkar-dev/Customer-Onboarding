@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, BadgeCheck, Check, FileCheck2, Landmark, Save, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Save } from 'lucide-react'
 import AppShell from '../components/layout/AppShell'
 import PageContainer from '../components/layout/PageContainer'
 import Button from '../components/common/Button'
-import FormError from '../components/common/FormError'
 import Loader from '../components/common/Loader'
 import Modal from '../components/common/Modal'
 import FormProgress from '../components/vendor-request/FormProgress'
@@ -31,12 +30,7 @@ import { cinApplies } from '../data/vendorTypes'
 import { FlagsContext } from '../context/flags-context'
 import useAutosave from '../hooks/useAutosave'
 import { checkPanExists, deleteMyDocument, getMyDocuments, saveOnboardingDraft, submitOnboarding, uploadVendorDocuments } from '../api/vendorApi'
-
-const trustPoints = [
-  { icon: ShieldCheck, label: 'Secure verification' },
-  { icon: FileCheck2, label: 'Invoice-ready profile' },
-  { icon: Landmark, label: 'Bank detail validation' },
-]
+import '../components/vendor-request/vendorRequest.css'
 
 const GST_MANAGED_FIELDS = ['vendorLegalName', 'registeredAddress1', 'registeredState', 'registeredPostalCode']
 const normalise = (value) => String(value ?? '').trim()
@@ -44,11 +38,15 @@ const documentLabel = (key) => documentTypes.find((type) => type.key === key)?.l
 
 // The vendor's onboarding application. A new vendor fills it in after signing up (progress is saved to their account
 // as they go); a vendor whose application was returned sees the flagged fields highlighted, with the reasons.
+// Laid out as LAS Central's Customer Creation Request (vendorRequest.css): a header, the step bar, the step's cards
+// and a footer of actions.
 export default function VendorRequestPage() {
   const navigate = useNavigate()
   const { profile, logout, refreshProfile } = useAuth()
   const returned = profile.stage === STAGES.returned
   const rejection = returned ? profile.rejection : null
+  // Earlier returns that were corrected and resubmitted, when the server sends them (top level, or on the open return).
+  const correctionHistory = returned ? [profile.correction_history, rejection?.correction_history].find(Array.isArray) || [] : []
 
   const form = useVendorRequest(profile)
   const { register, watch, getValues, setValue, setError, clearErrors, trigger, handleSubmit, initialValues, formState: { errors } } = form
@@ -134,6 +132,7 @@ export default function VendorRequestPage() {
     ...Object.entries(documentFlags).map(([type, flag]) => ({ key: `doc:${type}`, name: type, label: documentLabel(type), reasons: flag.reasons, status: flag.status, step: stepOfFlag(type, true), document: true })),
   ].sort((a, b) => a.step - b.step)
   const unresolvedCount = flaggedItems.filter((item) => item.status === 'open').length
+  const flaggedSteps = [...new Set(flaggedItems.filter((item) => item.status === 'open').map((item) => item.step))]
 
   const flagsContext = useMemo(() => ({
     flags,
@@ -147,30 +146,33 @@ export default function VendorRequestPage() {
 
   // Takes the vendor to a flagged field: the right step first, then scroll to it and draw the eye with a short pulse.
   const pendingFocus = useRef(null)
-  const focusItem = useCallback((item) => {
+  // `reveal: false` only draws the eye, leaving the screen where it is (so the Correction Required banner stays in view).
+  const focusItem = useCallback((item, reveal = true) => {
     const element = document.getElementById(item.document ? `doc-${item.name}` : item.name)
     if (!element) return false
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    if (!item.document) element.focus({ preventScroll: true })
+    if (reveal) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      if (!item.document) element.focus({ preventScroll: true })
+    }
     element.classList.add('flag-pulse')
     setTimeout(() => element.classList.remove('flag-pulse'), 1500)
     return true
   }, [])
 
-  const goToItem = (item) => {
+  const goToItem = (item, reveal = true) => {
     if (item.step !== step) {
-      pendingFocus.current = item
+      pendingFocus.current = { item, reveal }
       setStep(item.step)
     } else {
-      focusItem(item)
+      focusItem(item, reveal)
     }
   }
 
   useEffect(() => {
     if (!pendingFocus.current) return
-    const item = pendingFocus.current
+    const { item, reveal } = pendingFocus.current
     pendingFocus.current = null
-    setTimeout(() => focusItem(item), 80)
+    setTimeout(() => focusItem(item, reveal), 80)
   }, [step, focusItem])
 
   // A returned application opens on the first step that has something flagged, scrolled to the first open item.
@@ -179,7 +181,7 @@ export default function VendorRequestPage() {
     if (startedRef.current || !hasFlags) return
     startedRef.current = true
     const first = flaggedItems.find((item) => item.status === 'open') || flaggedItems[0]
-    if (first) goToItem(first)
+    if (first) goToItem(first, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFlags])
 
@@ -272,6 +274,13 @@ export default function VendorRequestPage() {
     }
   }
 
+  // A new step starts at its top: the page on a phone, the form's own scrolling body on a large screen.
+  const bodyRef = useRef(null)
+  const toTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    bodyRef.current?.scrollTo?.({ top: 0, behavior: 'smooth' })
+  }
+
   const nextStep = async () => {
     setAttempted(true)
     setSubmitError('')
@@ -314,13 +323,13 @@ export default function VendorRequestPage() {
     }
     setAttempted(false)
     setStep((current) => Math.min(current + 1, 4))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    toTop()
   }
 
   const previousStep = () => {
     setAttempted(false)
     setStep((current) => Math.max(current - 1, 1))
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    toTop()
   }
 
   const submitRequest = handleSubmit(async (data) => {
@@ -347,7 +356,7 @@ export default function VendorRequestPage() {
     const props = { register, errors, watch, setValue, setError, clearErrors, lockedFields: gstLockedFields, takenRef: form.takenRef }
     if (step === 1) {
       return (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-2">
           <ContactDetails {...props} />
           <VendorInformation
             {...props}
@@ -366,7 +375,7 @@ export default function VendorRequestPage() {
     if (step === 2) return <AddressDetails {...props} />
     if (step === 3) {
       return (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-2">
           <BankDetails {...props} />
           <SupportingDocuments
             documents={documents}
@@ -408,110 +417,66 @@ export default function VendorRequestPage() {
     )
   }
 
-  const heading = returned ? 'Update your application' : 'Request customer account'
+  const heading = returned ? 'Correct your application' : 'Request customer account'
 
   return (
     <FlagsContext.Provider value={flagsContext}>
       <AppShell backTo="/" onBack={() => setExitOpen(true)}>
         <PageContainer wide className="vendor-workspace h-full">
-          <section className="vendor-workspace__card grid h-full min-h-0 overflow-hidden rounded-xl border border-[#b3c3e4]/80 bg-white shadow-[0_12px_36px_rgba(40,83,130,0.08)] lg:grid-cols-[240px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)]">
-            <aside className="hidden min-h-0 flex-col overflow-hidden border-r border-[#dce6ff] bg-[#eef2fb] p-5 lg:flex xl:p-6">
-              <div>
-                <p className="eyebrow">Customer onboarding</p>
-                <h1 className="mt-3 text-2xl font-extrabold leading-[1.12] tracking-[-0.035em] text-navy-950">
-                  {returned ? 'Fix and resubmit your application' : 'Request your customer account'}
-                </h1>
-                <p className="mt-3 text-xs leading-5 text-slate-600">
-                  {returned
-                    ? 'Our team flagged a few details. Update them, or confirm they are correct, then send the application back for review.'
-                    : 'Complete your company, tax, address, and bank details to start managing invoices and payments.'}
+          <section className="vendor-workspace__card vr-screen" aria-label={heading}>
+            <header className="vr-head">
+              <div className="min-w-0">
+                <h1>{heading}</h1>
+                <p>{FORM_STEPS[step - 1].longTitle} · Fields marked with an asterisk are required.</p>
+              </div>
+              {autosave.status === 'error' ? (
+                <p className="vr-saved warn" role="status">Couldn&apos;t save your progress yet, trying again…</p>
+              ) : savedAt && (
+                <p className="vr-saved" role="status">
+                  <Check size={13} /> Progress saved at {savedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
                 </p>
-              </div>
+              )}
+            </header>
 
-              <div className="mt-5 space-y-2">
-                {trustPoints.map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex min-h-10 items-center gap-2.5 rounded-lg border border-[#b3c3e4]/80 bg-white/75 px-3 text-[11px] font-bold text-navy-900">
-                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-600 text-white">
-                      <Icon size={16} />
-                    </span>
-                    {label}
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-auto pt-5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Application progress</p>
-                <div className="mt-3 space-y-2">
-                  {FORM_STEPS.map((item) => (
-                    <div key={item.id} className="flex items-center gap-3">
-                      <span className={`grid size-6 shrink-0 place-items-center rounded-full text-[10px] font-bold ${item.id < step ? 'bg-emerald-100 text-emerald-700' : item.id === step ? 'bg-brand-600 text-white' : 'border border-slate-300 bg-white text-slate-500'}`}>
-                        {item.id < step ? <BadgeCheck size={14} /> : item.id}
-                      </span>
-                      <span className={`text-xs font-semibold ${item.id === step ? 'text-navy-900' : 'text-slate-500'}`}>{item.longTitle}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </aside>
-
-            <div className="flex min-h-0 min-w-0 flex-col px-4 py-3 sm:px-6 xl:px-7">
-              <header className="mb-2 flex flex-col gap-1 border-b border-slate-100 pb-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="mt-1 text-xl font-extrabold tracking-[-0.03em] text-navy-950 sm:text-2xl">{heading}</h2>
-                  <p className="mt-1 text-xs leading-5 text-slate-600">{FORM_STEPS[step - 1].longTitle} · Fields marked with an asterisk are required.</p>
-                </div>
-                {autosave.status === 'error' ? (
-                  <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-700" role="status">
-                    Couldn&apos;t save your progress yet, trying again…
-                  </p>
-                ) : savedAt && (
-                  <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700" role="status">
-                    <Check size={13} /> Progress saved at {savedAt.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
-                  </p>
-                )}
-              </header>
-
-              <FormProgress currentStep={step} />
-              <form className="flex min-h-0 flex-1 flex-col" onSubmit={submitRequest} noValidate>
-                <div className="relative min-h-0 flex-1">
-                <div className="h-full min-w-0 overflow-y-auto overflow-x-hidden pb-3 pr-1">
-                  {rejection && hasFlags && <ReturnedBanner rejection={rejection} items={flaggedItems} onGo={goToItem} />}
-                  {rejection && !hasFlags && rejection.overall_remark && (
-                    <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"><strong>Note from our team:</strong> {rejection.overall_remark}</p>
-                  )}
-                  {attempted && <FormError count={errorCount} />}
-                  {submitError && (
-                    <div role="alert" className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                      <span className="font-semibold">Something went wrong.</span> {submitError}
-                    </div>
-                  )}
-
-                  {renderStep()}
-                </div>
-                {step !== 4 && <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-white to-transparent" />}
-                </div>
-
-                {step !== 4 && (
-                  <div className="z-20 mt-3 shrink-0 rounded-lg border border-slate-300 bg-slate-50 p-2">
-                    <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <Button type="button" variant="secondary" className="px-6" onClick={saveDraft} disabled={saving || uploading}>
-                        {saving ? <Loader /> : <Save size={17} />} Save draft
-                      </Button>
-                      <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                        {step > 1 && <Button type="button" variant="secondary" onClick={previousStep}><ArrowLeft size={17} /> Back</Button>}
-                        <Button
-                          type="button"
-                          onClick={nextStep}
-                          disabled={saving || uploading || checkingDuplicates || checkingPan || panTaken || (step === 1 && (identity.blocked || demat.loading))}
-                        >
-                          {saving || checkingDuplicates || checkingPan ? <><Loader /> {saving ? 'Saving...' : 'Checking...'}</> : <>{step === 3 ? 'Review request' : 'Continue'} <ArrowRight size={17} /></>}
-                        </Button>
-                      </div>
-                    </div>
+            <FormProgress currentStep={step} flaggedSteps={flaggedSteps} />
+            <form className="vr-form" onSubmit={submitRequest} noValidate>
+              <div ref={bodyRef} className="vr-body">
+                {rejection && <ReturnedBanner rejection={rejection} items={flaggedItems} onGo={(item) => goToItem(item)} history={correctionHistory} />}
+                {attempted && errorCount > 0 && (
+                  <div role="alert" className="vr-alert">
+                    <AlertCircle size={16} />
+                    <span><b>Please review this step.</b> {errorCount} {errorCount === 1 ? 'field needs' : 'fields need'} your attention before you continue.</span>
                   </div>
                 )}
-              </form>
-            </div>
+                {submitError && (
+                  <div role="alert" className="vr-alert">
+                    <AlertCircle size={16} />
+                    <span><b>Something went wrong.</b> {submitError}</span>
+                  </div>
+                )}
+
+                {renderStep()}
+              </div>
+
+              {step !== 4 && (
+                <footer className="vr-foot">
+                  <Button type="button" variant="secondary" className="vr-btn" onClick={saveDraft} disabled={saving || uploading} aria-label="Save draft">
+                    {saving ? <Loader /> : <Save size={16} />} Save<span className="vr-hide-xs">draft</span>
+                  </Button>
+                  <div className="vr-foot-actions">
+                    {step > 1 && <Button type="button" variant="secondary" className="vr-btn" onClick={previousStep}><ArrowLeft size={16} /> Back</Button>}
+                    <Button
+                      type="button"
+                      className="vr-btn"
+                      onClick={nextStep}
+                      disabled={saving || uploading || checkingDuplicates || checkingPan || panTaken || (step === 1 && (identity.blocked || demat.loading))}
+                    >
+                      {saving || checkingDuplicates || checkingPan ? <><Loader /> {saving ? 'Saving...' : 'Checking...'}</> : <>{step === 3 ? 'Review request' : 'Continue'} <ArrowRight size={16} /></>}
+                    </Button>
+                  </div>
+                </footer>
+              )}
+            </form>
           </section>
         </PageContainer>
         <Modal

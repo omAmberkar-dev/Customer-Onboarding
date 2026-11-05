@@ -3,18 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import AppRoutes from '../routes/AppRoutes'
+import DocumentsPage from './DocumentsPage'
+import { AuthProvider } from '../context/AuthContext'
 import * as api from '../api/vendorApi'
 import { clearFinanceCache } from '../utils/finance'
 import { FINANCE, NOTIFICATIONS } from '../test/financeFixture'
 
 /*
- * Documents, through the real routes, on a journey shaped as LAS's customer journey API answers (its
+ * Documents is temporarily off (no route, no sidebar entry; AppRoutes says so), but the page is kept to be restored, so
+ * it is rendered here on its own. Documents, on a journey shaped as LAS's customer journey API answers (its
  * customer-journey.mjs), stubbed at the API module as isolated test data. Covers: every issued PDF of the signed-in
  * customer in one list (newest first, nothing not yet issued), the first one open in the preview, opening another,
  * Download with the right kind and id, statements, the phone layout, and the empty, error and not-onboarded states.
  */
-vi.mock('../api/vendorApi', async (importOriginal) => ({
-  ...(await importOriginal()),
+vi.mock('../api/vendorApi', async (importOriginal) => (await import('../test/vendorApiMock')).mockVendorApi(await importOriginal(), {
   getVendorProfile: vi.fn(async () => ({ vendor_id: 86, name: 'Neekhat A', stage: 'active' })),
   getMyLoans: vi.fn(),
   getMyFinance: vi.fn(),
@@ -22,8 +24,6 @@ vi.mock('../api/vendorApi', async (importOriginal) => ({
   fetchLoanDocumentUrl: vi.fn(async () => 'blob:loan-document'),
   downloadLoanDocument: vi.fn(async () => {}),
   downloadStatement: vi.fn(async () => {}),
-  getRenewal: vi.fn(async () => null),
-  getMyAgreements: vi.fn(async () => []),
 }))
 
 // LAS answers for the signed-in customer only (portalId = their vendor id); these are all of theirs.
@@ -45,7 +45,7 @@ const JOURNEY = {
 
 async function renderDocuments() {
   localStorage.setItem('vendor-onboarding-auth', JSON.stringify({ email: 'n@x.test', vendor_id: 86, token: 't' }))
-  await act(async () => { render(<MemoryRouter initialEntries={['/documents']}><AppRoutes /></MemoryRouter>) })
+  await act(async () => { render(<MemoryRouter initialEntries={['/home']}><AuthProvider><DocumentsPage /></AuthProvider></MemoryRouter>) })
 }
 const list = () => screen.getByRole('list', { name: 'Documents' })
 const titles = () => within(list()).getAllByRole('button', { name: /^Open / }).map((b) => b.getAttribute('aria-label'))
@@ -133,9 +133,14 @@ describe('Documents', () => {
     expect(screen.getByText(/Your loan account is being set up/)).toBeTruthy()
   })
 
-  it('is reached from the sidebar', async () => {
-    await renderDocuments()
+  it('is off for now: no sidebar entry, and /documents falls through to Page not found', async () => {
+    localStorage.setItem('vendor-onboarding-auth', JSON.stringify({ email: 'n@x.test', vendor_id: 86, token: 't' }))
+    await act(async () => { render(<MemoryRouter initialEntries={['/documents']}><AppRoutes /></MemoryRouter>) })
+    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeTruthy()
+    expect(api.getMyLoans).not.toHaveBeenCalled()
+    cleanup()
+    await act(async () => { render(<MemoryRouter initialEntries={['/home']}><AppRoutes /></MemoryRouter>) })
     const sidebar = screen.getByRole('complementary', { name: 'Sections' })
-    expect(within(sidebar).getByRole('link', { name: 'Documents' }).getAttribute('aria-current')).toBe('page')
+    expect(within(sidebar).queryByRole('link', { name: /Documents/ })).toBeNull()
   })
 })

@@ -1,4 +1,3 @@
-import { Wallet } from 'lucide-react'
 import Input from '../common/Input'
 import SelectMenu from '../common/SelectMenu'
 import FormSection from './FormSection'
@@ -14,9 +13,10 @@ export default function DematDetails({ register, errors, watch, setValue, demat,
   const dematHint = demat.verified ? demat.message : demat.loading ? 'Verifying the Demat ID…' : '8–16 letters or digits. Verify to fill in the DP ID, BO ID and depository.'
 
   return (
-    <FormSection icon={Wallet} title="Demat account details" description="The customer’s demat account, if they have one. All fields are optional.">
-      <fieldset disabled={disabled} className={`grid min-w-0 gap-x-3.5 gap-y-2.5 transition-opacity md:grid-cols-3 ${disabled ? 'opacity-50' : ''}`}>
+    <FormSection title="Demat account details" description="The customer’s demat account, if they have one. All fields are optional.">
+      <fieldset disabled={disabled} className={`vr-grid vr-fieldset ${disabled ? 'vr-dim' : ''}`}>
         <Input
+          className="vr-field"
           label="Demat ID"
           name="dematId"
           register={register}
@@ -30,6 +30,7 @@ export default function DematDetails({ register, errors, watch, setValue, demat,
           )}
         />
         <Input
+          className="vr-field"
           label="Depository Participant ID (DP ID)"
           name="dpId"
           register={register}
@@ -40,6 +41,7 @@ export default function DematDetails({ register, errors, watch, setValue, demat,
           autoComplete="off"
         />
         <Input
+          className="vr-field"
           label="Beneficial Owner ID (BO ID)"
           name="boId"
           register={register}
@@ -50,6 +52,7 @@ export default function DematDetails({ register, errors, watch, setValue, demat,
           autoComplete="off"
         />
         <SelectMenu
+          className="vr-field"
           label="Depository"
           name="depository"
           register={register}

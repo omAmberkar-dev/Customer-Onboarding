@@ -22,6 +22,10 @@ JOURNEY = {"onboarded": True, "customerNo": "100440", "steps": [{"key": "onboard
            "invoicesAvailable": True}
 
 
+OWN_DOCUMENTS = {"/api/customer-portal/documents/sanction/1000-11", "/api/customer-portal/documents/drawdown/1000-501",
+                 "/api/customer-portal/documents/invoice/aW52LTEw"}
+
+
 class FakeLas(BaseHTTPRequestHandler):
     calls = []
     answer = None  # (status, content_type, body) overriding the default reply
@@ -36,7 +40,8 @@ class FakeLas(BaseHTTPRequestHandler):
         portal_id = parse_qs(url.query).get("portalId", [""])[0]
         if url.path == "/api/customer-portal/journey":
             return self._send(200, "application/json", json.dumps(JOURNEY).encode())
-        if url.path == "/api/customer-portal/documents/sanction/1000-11" and portal_id == "84":
+        # LAS answers a document only for the customer it belongs to (here everything is portal 84's).
+        if url.path in OWN_DOCUMENTS and portal_id == "84":
             return self._send(200, "application/pdf", PDF, {"Content-Disposition": 'inline; filename="Sanction_Memo_100411.pdf"'})
         return self._send(404, "application/json", json.dumps({"error": "Document not found."}).encode())
 
@@ -67,7 +72,7 @@ def client(tmp_path, monkeypatch, las):
     db = sqlite3.connect(path)
     db.executescript("""
         CREATE TABLE vendor (vendor_id INTEGER PRIMARY KEY, email TEXT, status TEXT, submission_round INTEGER);
-        INSERT INTO vendor VALUES (84, 'c@x.test', 'active', 1), (85, 'd@x.test', 'Pending', 1);
+        INSERT INTO vendor VALUES (84, 'c@x.test', 'active', 1), (85, 'd@x.test', 'Pending', 1), (86, 'e@x.test', 'active', 1);
     """)
     db.close()
     monkeypatch.setattr(auth, "get_connection", lambda: sqlite_db.Connection(path))
@@ -143,3 +148,18 @@ def test_failures_reach_the_customer_in_plain_words(client, monkeypatch, setup):
         r = client.get(path, headers=signed_in(84))
         assert r.status_code == 503, (setup, path)
         assert r.get_json() == {"error": customer_journey.UNAVAILABLE}
+
+
+def test_each_customer_is_asked_about_as_themselves(client):
+    client.get("/vendors/me/loans", headers=signed_in(84))
+    client.get("/vendors/me/loans?portalId=84", headers=signed_in(86))
+    assert [call["query"]["portalId"] for call in FakeLas.calls] == [["84"], ["86"]]
+
+
+@pytest.mark.parametrize("path", ["sanction/1000-11", "drawdown/1000-501", "invoice/aW52LTEw"])
+def test_another_customers_sanction_drawdown_or_invoice_is_refused(client, path):
+    # Portal 84's documents: 84 gets them, 86 asking for the same ids is refused (LAS checks them against 86's own loans).
+    assert client.get(f"/vendors/me/loans/documents/{path}", headers=signed_in(84)).status_code == 200
+    r = client.get(f"/vendors/me/loans/documents/{path}?portalId=84", headers=signed_in(86))
+    assert r.status_code == 404 and r.get_json() == {"error": customer_journey.NOT_FOUND}
+    assert FakeLas.calls[-1]["query"] == {"portalId": ["86"]}

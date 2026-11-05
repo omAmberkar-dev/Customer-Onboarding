@@ -12,8 +12,7 @@ import { FINANCE, NOTIFICATIONS } from '../test/financeFixture'
  * API module (isolated test data, never presented as live). Covers: real figures shown, "unavailable" never shown as
  * zero, a failed loans read leaving the rest of Home working, the sidebar and the header search.
  */
-vi.mock('../api/vendorApi', async (importOriginal) => ({
-  ...(await importOriginal()),
+vi.mock('../api/vendorApi', async (importOriginal) => (await import('../test/vendorApiMock')).mockVendorApi(await importOriginal(), {
   getVendorProfile: vi.fn(),
   getMyHome: vi.fn(),
   getMyLoans: vi.fn(),
@@ -132,8 +131,8 @@ describe('Shell', () => {
     await renderAt('/home')
     const sidebar = screen.getByRole('complementary', { name: 'Sections' })
     const names = within(sidebar).getAllByRole('link').map((a) => a.textContent.trim())
-    expect(names).toEqual(['Dashboard', 'My Loans & Sanctions', 'Drawdown History', 'Repayment Schedule', 'Cashflow & Transactions',
-      'Invoice Management', 'Payments & Receipts', 'Documents', 'Change Requests', 'Help & Support', 'Contact support'])
+    expect(names).toEqual(['Dashboard', 'Loans & Sanctions', 'Drawdown History', 'Cashflows', 'Transactions',
+      'Invoice Management', 'Receipts', 'Change Requests', 'Help & Support', 'Contact support'])
     expect(within(sidebar).getByRole('link', { name: 'Dashboard' }).getAttribute('aria-current')).toBe('page')
     expect(within(sidebar).getByRole('button', { name: 'Profile' })).toBeTruthy()
   })
@@ -227,5 +226,16 @@ describe('Support', () => {
     await act(async () => { fireEvent.click(send) })
     expect(screen.getByText('Use up to 60 letters.')).toBeTruthy()
     expect(screen.getByLabelText(/Invoice, request or loan number/).getAttribute('aria-invalid')).toBe('true')
+  })
+})
+
+describe('Home links', () => {
+  it('names the modules as the sidebar does, and never links to Documents while it is off', async () => {
+    await renderAt('/home')
+    const main = screen.getByRole('main')
+    expect(within(main).getByRole('link', { name: /Cashflows/ }).getAttribute('href')).toBe('/repayments')
+    expect(within(main).getByRole('link', { name: /Transactions/ }).getAttribute('href')).toBe('/cashflow')
+    expect(within(main).getByRole('link', { name: 'Loans & Sanctions' }).getAttribute('href')).toBe('/loans')
+    expect(document.querySelector('a[href="/documents"]')).toBeNull()
   })
 })

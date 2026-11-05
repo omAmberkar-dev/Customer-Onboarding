@@ -19,6 +19,7 @@ from mysql.connector import Error as MySQLError
 
 import agreement_hold
 import agreements
+import application_history
 import auth
 import customer_home
 import customer_finance
@@ -676,6 +677,12 @@ def _vendor_with_progress(vendor_id):
     vendor["rejection"] = (
         rejections.get_open_rejection(vendor_id) if vendor["stage"] in (auth.STAGE_RETURNED, auth.STAGE_REJECTED) else None
     )
+    # The returns already corrected and resubmitted (the open one is `rejection`); reviewer roles only, never names.
+    try:
+        vendor["correction_history"] = rejections.correction_history(vendor_id)
+    except MySQLError:
+        app.logger.exception("Could not read the correction history for vendor %s", vendor_id)
+        vendor["correction_history"] = []
     vendor["change_request"] = _change_request_of(vendor) if vendor["stage"] == auth.STAGE_CHANGE_REQUESTED else None
     vendor.pop("correction_fields", None)
     # The agreement waiting for the vendor's signature (onboarding or a renewal), if any.
@@ -799,8 +806,10 @@ def _onboarding_values(data):
     return values
 
 
-def _save_onboarding(vendor_id, vendor_row, values):
-    """Write `values` to the vendor row and tell the open return which flagged fields the vendor has now changed."""
+def _save_onboarding(vendor_id, vendor_row, values, cursor=None):
+    """Write `values` to the vendor row and tell the open return which flagged fields the vendor has now changed.
+
+    With `cursor`, inside the caller's transaction (the submit), which commits it."""
     if values:
         assignments = ", ".join(f"{field} = %s" for field in values)
         # `name` mirrors the legal name (the enterprise app and SAP read it).
@@ -809,15 +818,17 @@ def _save_onboarding(vendor_id, vendor_row, values):
         params = [*values.values()]
         if "vendor_legal_name" in values:
             params.append(values["vendor_legal_name"])
-        conn = get_connection()
-        try:
-            cursor = conn.cursor()
+        if cursor is not None:
             cursor.execute(f"UPDATE vendor SET {assignments} WHERE vendor_id = %s", [*params, vendor_id])
-            conn.commit()
-        finally:
-            conn.close()
+        else:
+            conn = get_connection()
+            try:
+                conn.cursor().execute(f"UPDATE vendor SET {assignments} WHERE vendor_id = %s", [*params, vendor_id])
+                conn.commit()
+            finally:
+                conn.close()
     changed = [field for field, value in values.items() if _norm(value) != _norm(vendor_row.get(field))]
-    rejections.mark_fixed(vendor_id, changed)
+    rejections.mark_fixed(vendor_id, changed, cursor=cursor)
 
 
 def _load_vendor_row(vendor_id):
@@ -886,26 +897,49 @@ def submit_my_application():
         if verification_error:
             return jsonify({"error": verification_error[0]}), verification_error[1]
 
-        _save_onboarding(vendor_id, before, values)
+        # What was submitted in this round is kept (vendor_submission), so a later resubmission never overwrites it.
+        current = {**before, **values}
+        submitted = {field: current.get(field) for field in ("email", *ONBOARDING_FIELDS, *_demat_fields())}
+        try:
+            documents = _documents_for(vendor_id)
+        except Exception:  # noqa: BLE001 - storage being unreachable must not stop the submit; the record says the list is unknown
+            app.logger.exception("Could not list the documents of vendor %s for the submission record", vendor_id)
+            documents = None
 
-        # A flagged field the vendor checked and kept as it was (the rejection may have been about a document,
-        # or the value was right) still counts as dealt with.
-        confirmed = data.get("confirmed_fields")
-        if isinstance(confirmed, list):
-            rejections.mark_fixed(vendor_id, [str(key) for key in confirmed])
-
+        # One transaction: the status moves only from the one the guard read (a second submit at the same moment gets 409, not a
+        # second round, and saves nothing), the values are saved, the open return is told what was fixed and closed, and the
+        # round's record and audit row are written with it.
         conn = get_connection()
         try:
-            cursor = conn.cursor()
+            cursor = conn.cursor(dictionary=True)
             cursor.execute(
                 "UPDATE vendor SET status = %s, submission_round = submission_round + 1, "
-                "submitted_at = NOW(), is_draft = 0 WHERE vendor_id = %s",
-                (STATUS_PENDING, vendor_id),
+                "submitted_at = NOW(), is_draft = 0 WHERE vendor_id = %s AND status = %s",
+                (STATUS_PENDING, vendor_id, g.vendor["status"]),
+            )
+            if cursor.rowcount != 1:
+                conn.rollback()
+                return jsonify({"error": "Your application was already submitted. Refresh to see where it stands."}), 409
+            _save_onboarding(vendor_id, before, values, cursor=cursor)
+            # A flagged field the vendor checked and kept as it was (the rejection may have been about a document,
+            # or the value was right) still counts as dealt with.
+            confirmed = data.get("confirmed_fields")
+            if isinstance(confirmed, list):
+                rejections.mark_fixed(vendor_id, [str(key) for key in confirmed], cursor=cursor)
+            cursor.execute("SELECT submission_round FROM vendor WHERE vendor_id = %s", (vendor_id,))
+            round_no = cursor.fetchone()["submission_round"]
+            rejections.mark_resubmitted(vendor_id, cursor=cursor)
+            kept = application_history.record_submission(cursor, vendor_id, round_no, submitted, documents)
+            application_history.audit(
+                cursor, vendor_id, "resubmitted" if round_no > 1 else "submitted", "vendor",
+                {"status": g.vendor["status"]}, {"status": STATUS_PENDING, "round": round_no, "snapshot": kept},
             )
             conn.commit()
+        except MySQLError:
+            conn.rollback()
+            raise
         finally:
             conn.close()
-        rejections.mark_resubmitted(vendor_id)
         vendor = _vendor_with_progress(vendor_id)
     except MySQLError as err:
         return jsonify({"error": str(err)}), 500

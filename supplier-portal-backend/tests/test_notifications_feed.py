@@ -130,13 +130,32 @@ def test_sent_to_the_checker_is_one_item_whether_the_review_app_logged_it_or_not
 def test_a_return_for_correction_says_who_returned_it_and_asks_while_it_is_open():
     rejections = [
         {"rejection_id": 3, "round_no": 1, "rejected_by_role": "maker", "rejected_at": "2026-10-20 10:00:00", "resubmitted_at": "2026-10-21 10:00:00"},
-        {"rejection_id": 5, "round_no": 2, "rejected_by_role": "checker", "rejected_at": "2026-10-30 10:00:00", "resubmitted_at": None},
+        {"rejection_id": 5, "round_no": 2, "rejected_by_role": "checker", "rejected_at": "2026-10-30 10:00:00", "resubmitted_at": None,
+         "overall_remark": "Upload a clearer\n bank proof"},
     ]
     items = by_id(onboarding(vendor("returned", round_no=2, submitted="2026-10-21 10:00:00"), rejections=rejections, stage=auth.STAGE_RETURNED))
-    assert set(items) == {"onb-submitted-r2", "onb-returned-3", "onb-returned-5"}  # no second "needs your corrections"
-    assert (items["onb-returned-5"]["kind"], items["onb-returned-5"]["detail"], items["onb-returned-5"]["to"]) == ("action", ["By the checker", "Round 2"], "/request-vendor")
+    assert set(items) == {"onb-submitted-r2", "onb-returned-3", "onb-returned-5"}  # no second "corrections required"
+    # The open return asks for the corrections, with the reviewer's note to the customer (2026-11-04).
+    assert (items["onb-returned-5"]["title"], items["onb-returned-5"]["kind"], items["onb-returned-5"]["detail"], items["onb-returned-5"]["to"]) == (
+        "Corrections required", "action", ["Upload a clearer bank proof", "By the checker", "Round 2"], "/request-vendor")
     assert items["onb-returned-3"]["kind"] == "update" and items["onb-returned-3"]["detail"] == ["By the maker", "Round 1"]
-    assert items["onb-submitted-r2"]["title"] == "Your corrected application was submitted"
+    assert items["onb-returned-3"]["title"] == "Your application was returned to you for correction"
+    assert items["onb-submitted-r2"]["title"] == "Resubmitted for review, round 2"
+
+
+def test_each_round_submitted_shows_once_from_the_audit_trail_and_a_long_remark_is_shortened():
+    rows = [audit(20, "submitted", "vendor", "Pending", at="2026-10-20 09:00:00", round=1),
+            audit(21, "resubmitted", "vendor", "Pending", at="2026-10-25 09:00:00", round=2),
+            audit(22, "resubmitted", "vendor", "Pending", at="2026-10-31 09:00:00", round=3)]
+    long = "Please upload " + "a clearer copy " * 20
+    rejections = [{"rejection_id": 7, "round_no": 3, "rejected_by_role": "maker", "rejected_at": "2026-11-01 10:00:00", "resubmitted_at": None,
+                   "overall_remark": long}]
+    items = by_id(onboarding(vendor("returned", round_no=3, submitted="2026-10-31 09:00:00"), rows, rejections, stage=auth.STAGE_RETURNED))
+    assert [items[f"onb-submitted-r{n}"]["title"] for n in (1, 2, 3)] == [
+        "Your application was submitted", "Resubmitted for review, round 2", "Resubmitted for review, round 3"]
+    assert len([i for i in items.values() if i["stage"] == "submitted"]) == 3  # the current round once, from the vendor row
+    note = items["onb-returned-7"]["detail"][0]
+    assert note.endswith("…") and len(note) <= notifications_feed.REMARK_CHARS and items["onb-returned-7"]["title"] == "Corrections required"
 
 
 def test_a_logged_return_still_asks_for_the_corrections_but_a_closed_legacy_one_does_not():

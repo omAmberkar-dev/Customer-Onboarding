@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, FileText, LockKeyhole, X } from 'lucide-react'
+import { Check, LockKeyhole, X } from 'lucide-react'
 import Button from '../common/Button'
 
 export default function TermsPolicyModal({ open, onClose, onAccept }) {
@@ -34,36 +34,27 @@ export default function TermsPolicyModal({ open, onClose, onAccept }) {
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section
-        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+        className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-[10px] border border-slate-200 bg-white shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="terms-policy-title"
         aria-describedby="terms-policy-intro"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
-          <div className="flex min-w-0 items-start gap-3">
-            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand-50 text-brand-600">
-              <FileText size={21} />
-            </span>
-            <div>
-              <p className="eyebrow">Supplier onboarding portal</p>
-              <h2 id="terms-policy-title" className="mt-1 text-xl font-extrabold tracking-[-0.025em] text-navy-950">
-                Terms and policies
-              </h2>
-              <p id="terms-policy-intro" className="mt-1 text-xs leading-5 text-slate-500">
-                Please read this document completely before accepting.
-              </p>
-            </div>
+        {/* LAS's dialog frame: the title and subtitle with a close button, a scrolling body, a footer of actions. */}
+        <header className="vr-modal-head">
+          <div className="min-w-0">
+            <h2 id="terms-policy-title">Terms and policies</h2>
+            <p id="terms-policy-intro">Please read this document completely before accepting.</p>
           </div>
           <button ref={closeRef} type="button" onClick={onClose} className="interactive-icon shrink-0" aria-label="Close terms and policies">
-            <X size={20} />
+            <X size={18} />
           </button>
         </header>
 
         <div
           ref={contentRef}
           onScroll={checkScrollPosition}
-          className="min-h-0 flex-1 overflow-y-auto px-5 py-5 text-sm leading-6 text-slate-600 sm:px-6"
+          className="min-h-0 flex-1 overflow-y-auto px-4 py-4 text-[13px] leading-6 text-slate-600 sm:px-5"
           tabIndex="0"
         >
           <div className="rounded-xl border border-[#dce6ff] bg-brand-50 p-4 text-sm leading-6 text-navy-900">
@@ -108,17 +99,13 @@ export default function TermsPolicyModal({ open, onClose, onAccept }) {
           </div>
         </div>
 
-        <footer className="border-t border-slate-200 bg-slate-50/80 px-5 py-4 sm:px-6">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="m-0 text-xs font-semibold text-slate-500">
-              {reachedEnd ? 'Terms reviewed. You can now accept.' : 'Scroll to the end to enable acceptance.'}
-            </p>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-              <Button type="button" onClick={onAccept} disabled={!reachedEnd}>
-                <Check size={17} /> {reachedEnd ? 'Yes, I agree' : 'Scroll to continue'}
-              </Button>
-            </div>
+        <footer className="vr-modal-foot">
+          <small>{reachedEnd ? 'Terms reviewed. You can now accept.' : 'Scroll to the end to enable acceptance.'}</small>
+          <div className="flex gap-2">
+            <Button type="button" variant="secondary" className="vr-btn" onClick={onClose}>Cancel</Button>
+            <Button type="button" className="vr-btn" onClick={onAccept} disabled={!reachedEnd}>
+              <Check size={16} /> {reachedEnd ? 'Yes, I agree' : 'Scroll to continue'}
+            </Button>
           </div>
         </footer>
       </section>

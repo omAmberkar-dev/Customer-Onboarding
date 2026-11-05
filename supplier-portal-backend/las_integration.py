@@ -12,10 +12,16 @@ vendor.status, so the customer's portal shows where the application stands:
 Called server to server: every request carries the shared key from LAS_INTEGRATION_KEY in the X-LAS-Key header.
 
     GET  /las/applications?queue=maker|checker|all      submitted portal applications (summaries)
-    GET  /las/applications/<id>                          one application: every detail, demat included, and its documents
+    GET  /las/applications/<id>                          one application: every detail, demat included, its documents and its
+                                                         history (each round's submission, the returns with their reasons, the
+                                                         audit trail: application_history.las_history)
     GET  /las/applications/<id>/documents/content?blob_name=...   one document's file
     GET  /las/return-reasons                             the reasons a field can be returned for
     POST /las/applications/<id>/actions                  {"role", "action", "by", "remark", "items", "to"}
+
+Every action writes an audit_log row in the same transaction as the status change (application_history.py), with the role as the
+actor and the LAS user in after_value. A resubmitted application is the same vendor_id, back in the maker's queue with its round
+raised; a checker's return to the maker keeps the round.
 """
 import hmac
 import os
@@ -25,6 +31,7 @@ from decimal import Decimal
 from flask import Blueprint, jsonify, request
 from mysql.connector import Error as MySQLError
 
+import application_history
 import auth
 import demat
 from db import get_connection
@@ -39,6 +46,15 @@ NEXT_STATUS = {  # (role, action) -> new vendor.status
     ("checker", "approve"): "active",
     ("maker", "reject"): "Rejected",
     ("checker", "reject"): "Rejected",
+}
+# (role, action, to) -> the audit_log action recorded for it (application_history.py).
+AUDIT_ACTIONS = {
+    ("maker", "submit"): "approval_recorded",
+    ("checker", "approve"): "approval_recorded",
+    ("maker", "reject"): "rejected",
+    ("checker", "reject"): "rejected",
+    ("maker", "return"): "returned_for_correction",
+    ("checker", "return"): "returned_for_correction",
 }
 DEMAT_LABELS = {"demat_id": "Demat ID", "dp_id": "DP ID", "bo_id": "BO ID", "depository": "Depository"}
 
@@ -129,7 +145,11 @@ def get_application(vendor_id):
     except Exception:  # noqa: BLE001 - storage being unreachable must not hide the application itself
         documents = None
     details = {key: _plain(value) for key, value in row.items() if key not in ("password", "correction_fields")}
-    return jsonify({**_summary(row), "details": details, "documents": documents}), 200
+    try:
+        history = application_history.las_history(vendor_id, row["submission_round"])
+    except MySQLError as err:  # the application itself still shows; the history says why it is missing
+        history = {"error": str(err)}
+    return jsonify({**_summary(row), "details": details, "documents": documents, "history": history}), 200
 
 
 @bp.get("/applications/<int:vendor_id>/documents/content")
@@ -221,10 +241,12 @@ def act(vendor_id):
     try:
         cursor = conn.cursor()
         # Only from the status it was read in, so two people acting at once cannot both move it.
-        cursor.execute("UPDATE vendor SET status = %s WHERE vendor_id = %s AND status = %s", (new_status, vendor_id, row["status"]))
+        returned_at = ", returned_at = NOW()" if new_status == "returned" else ""
+        cursor.execute(f"UPDATE vendor SET status = %s{returned_at} WHERE vendor_id = %s AND status = %s", (new_status, vendor_id, row["status"]))
         if cursor.rowcount != 1:
             conn.rollback()
             return jsonify({"error": "The application changed meanwhile; reload it."}), 409
+        rejection_id = None
         if new_status == "returned":
             cursor.execute(
                 "INSERT INTO vendor_rejection (vendor_id, round_no, rejected_by_role, rejected_by, overall_remark, rejected_at) "
@@ -238,6 +260,12 @@ def act(vendor_id):
                     "VALUES (%s, %s, %s, %s, %s, %s)",
                     (rejection_id, reason_code, field_key, field_label, reason_label, item_remark),
                 )
+        audit_action = "returned_to_maker" if new_status == "Pending" else AUDIT_ACTIONS[(role, action)]
+        application_history.audit(cursor, vendor_id, audit_action, role, {"status": row["status"]}, {
+            "status": new_status, "round": row["submission_round"] or 1, "by": by, "remark": remark,
+            **({"to": to} if action == "return" else {}),
+            **({"rejection_id": rejection_id, "items": len(items)} if rejection_id else {}),
+        })
         conn.commit()
     except MySQLError as err:
         conn.rollback()

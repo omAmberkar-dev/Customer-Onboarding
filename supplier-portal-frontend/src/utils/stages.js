@@ -14,8 +14,9 @@ export const STAGES = {
 
 // Stages in which the vendor edits the onboarding form.
 export const FORM_STAGES = [STAGES.draft, STAGES.returned]
-// Stages in which the vendor can only follow the progress of their application.
-export const WAITING_STAGES = [STAGES.makerReview, STAGES.checkerReview, STAGES.agreementSigned, STAGES.approved, STAGES.rejected, STAGES.changeRequested]
+// Stages in which the vendor can follow the progress of their application. A returned one also shows there ("Correction
+// Required", with the reviewer's remarks); its home is still the form, as FORM_STAGES is checked first.
+export const WAITING_STAGES = [STAGES.makerReview, STAGES.checkerReview, STAGES.agreementSigned, STAGES.approved, STAGES.rejected, STAGES.changeRequested, STAGES.returned]
 
 export function homeForStage(stage) {
   if (stage === STAGES.active) return '/home'

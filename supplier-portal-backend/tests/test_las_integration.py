@@ -10,7 +10,9 @@ import sqlite_db
 KEY = "test-las-key"
 SCHEMA = """
 CREATE TABLE vendor (vendor_id INTEGER PRIMARY KEY, email TEXT, vendor_legal_name TEXT, pan TEXT, gstin TEXT, demat_id TEXT,
-  status TEXT, submission_round INTEGER, submitted_at DATETIME, source TEXT, is_draft INTEGER);
+  status TEXT, submission_round INTEGER, submitted_at DATETIME, source TEXT, is_draft INTEGER, returned_at DATETIME);
+CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT, entity_id TEXT, action TEXT, actor TEXT, before_value TEXT,
+  after_value TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
 CREATE TABLE vendor_rejection (rejection_id INTEGER PRIMARY KEY AUTOINCREMENT, vendor_id INTEGER NOT NULL, round_no INTEGER NOT NULL,
   rejected_by_role TEXT NOT NULL, rejected_by TEXT, overall_remark TEXT, bulk_batch_id TEXT,
   rejected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, resubmitted_at TIMESTAMP);
@@ -21,10 +23,10 @@ CREATE TABLE rejection_reason (reason_id INTEGER PRIMARY KEY, reason_code TEXT N
 INSERT INTO rejection_reason (reason_id, reason_code, section, field_key, field_label, reason_label) VALUES
   (1, 'PAN_INVALID', 'Vendor', 'pan', 'PAN', 'PAN invalid or does not match GSTIN');
 INSERT INTO vendor VALUES
-  (84, 'c@x.test', 'Osprey', 'ABCDE1234F', NULL, '12081600', 'Pending', 1, '2026-10-27 14:53:45', 'self_service', 0),
-  (85, 'd@x.test', 'Kestrel', 'ABCDE1234G', NULL, NULL, '01', 1, '2026-10-26 10:00:00', 'self_service', 0),
-  (86, 'e@x.test', 'Maker-made', 'ABCDE1234H', NULL, NULL, 'Pending', 0, NULL, NULL, 0),
-  (87, 'f@x.test', 'Draft', 'ABCDE1234J', NULL, NULL, 'registered', 0, NULL, 'self_service', 0);
+  (84, 'c@x.test', 'Osprey', 'ABCDE1234F', NULL, '12081600', 'Pending', 1, '2026-10-27 14:53:45', 'self_service', 0, NULL),
+  (85, 'd@x.test', 'Kestrel', 'ABCDE1234G', NULL, NULL, '01', 1, '2026-10-26 10:00:00', 'self_service', 0, NULL),
+  (86, 'e@x.test', 'Maker-made', 'ABCDE1234H', NULL, NULL, 'Pending', 0, NULL, NULL, 0, NULL),
+  (87, 'f@x.test', 'Draft', 'ABCDE1234J', NULL, NULL, 'registered', 0, NULL, 'self_service', 0, NULL);
 """
 
 

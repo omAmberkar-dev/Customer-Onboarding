@@ -38,9 +38,10 @@ SECTIONS = {
         "date": "date",
         "type": "type",
         "columns": [
-            ("Date", "date", "date"), ("Reference", "reference", "text"), ("Disbursement No.", "disbursementNo", "text"),
-            ("Type", "type", "label"), ("Description", "description", "text"), ("Inflow", "inflow", "money"),
-            ("Outflow", "outflow", "money"), ("Currency", "currency", "text"), ("Status", "status", "label"),
+            ("Date", "date", "date"), ("Reference", "reference", "text"), ("Sanction No.", "sanctionNo", "text"),
+            ("Disbursement No.", "disbursementNo", "text"), ("Type", "type", "label"), ("Description", "description", "text"),
+            ("Inflow", "inflow", "money"), ("Outflow", "outflow", "money"), ("Charged", "charged", "money"),
+            ("Currency", "currency", "text"), ("Status", "status", "label"),
             ("Payment reference / UTR", "paymentReference", "text"),
         ],
     },
@@ -50,20 +51,23 @@ SECTIONS = {
         "date": "dueDate",
         "type": "kind",
         "columns": [
-            ("Disbursement No.", "disbursementNo", "text"), ("Instalment", "instalment", "text"), ("Due date", "dueDate", "date"),
+            ("Sanction No.", "sanctionNo", "text"), ("Disbursement No.", "disbursementNo", "text"), ("Instalment", "instalment", "text"),
+            ("Due date", "dueDate", "date"),
             ("Component", "kind", "label"), ("Description", "description", "text"), ("Amount due", "amount", "money"),
             ("Paid", "paid", "money"), ("Outstanding", "outstanding", "money"), ("Status", "status", "label"),
         ],
     },
     "payments": {
-        "title": "Payments and receipts statement",
+        "title": "Receipts statement",
         "rows": "payments",
         "date": "paymentDate",
-        "type": None,
+        # The Receipts screen's allocation filter (allocated, partially allocated, unallocated, pending approval).
+        "type": "allocationStatus",
         "columns": [
             ("Payment date", "paymentDate", "date"), ("Receipt No.", "receiptNo", "text"), ("Payment reference / UTR", "reference", "text"),
-            ("Disbursement No.", "disbursementNo", "text"), ("Amount", "amount", "money"), ("Applied to dues", "applied", "money"),
-            ("Not yet applied", "unapplied", "money"), ("Currency", "currency", "text"), ("Status", "status", "label"),
+            ("Mode", "referenceType", "text"), ("Sanction No.", "sanctionNo", "text"), ("Disbursement No.", "disbursementNo", "text"),
+            ("Amount", "amount", "money"), ("Applied to dues", "applied", "money"), ("Not yet applied", "unapplied", "money"),
+            ("Currency", "currency", "text"), ("Status", "status", "label"), ("Allocation", "allocationStatus", "allocation"),
         ],
     },
 }
@@ -73,6 +77,12 @@ LABELS = {
     "pending": "Pending verification", "rejected": "Not accepted", "cancelled": "Cancelled", "confirmed": "Confirmed",
     "allocated": "Applied to dues", "principal": "Principal", "interest": "Interest", "fee": "Fees and charges", "tax": "GST",
     "paid": "Paid", "overdue": "Overdue", "due": "Due", "partially_paid": "Partially paid", "upcoming": "Upcoming",
+    "interest_charge": "Interest charged", "fee_charge": "Fees and GST charged",
+}
+# A receipt's allocation state (LAS customer-finance.mjs allocationStatus), for the payments statement's Allocation column.
+ALLOCATION_LABELS = {
+    "pending_approval": "Pending approval", "unallocated": "Unallocated", "partially_allocated": "Partially allocated",
+    "allocated": "Allocated", "rejected": "Not accepted", "cancelled": "Cancelled",
 }
 
 
@@ -136,6 +146,8 @@ def _cell(row, field, kind):
         return ""
     if kind == "label":
         return LABELS.get(value, str(value))
+    if kind == "allocation":
+        return ALLOCATION_LABELS.get(value, str(value))
     if kind == "money":
         return float(value)
     return str(value)

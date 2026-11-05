@@ -1,0 +1,755 @@
+/*
+ * The customer request form (/request-vendor), laid out as LAS Central's "Customer Creation Request"
+ * (Loans-Against-Securities src/styles/vendorRequest.css, uniform.css): one work surface with a header, a step
+ * bar, stacked titled cards of three-column fields, and a footer of actions. Imported only by the form, and every
+ * rule sits under .vr-screen, so nothing else in the portal changes. Colours are the portal's own tokens
+ * (index.css), which follow LAS's; the amber of the correction note is LAS's status-warning.
+ * Unlayered on purpose: these rules win over the Tailwind utilities of the shared inputs they restyle.
+ */
+.vr-screen {
+  --vr-blue: var(--primary);
+  --vr-line: var(--border);
+  --vr-muted: var(--text-muted);
+  --vr-canvas: #f6f8fb;
+  --vr-danger: var(--danger);
+  --vr-danger-soft: #fdf0ef;
+  --vr-danger-border: #f3c4bf;
+  --vr-warn: #e5a900;
+  --vr-warn-soft: #fff6db;
+  --vr-warn-border: #efd583;
+  --vr-warn-ink: #6b4e00;
+  --vr-green-soft: #e8f6ee;
+  --vr-green-ink: #146c43;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  border: 1px solid var(--vr-line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  /* clip, not hidden: hidden would make this a scroll container and stop the footer sticking on phones. */
+  overflow: clip;
+}
+
+/* Header: the title and the step being filled in, the autosave state on the right. */
+.vr-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--vr-line);
+}
+.vr-head h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 750;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.vr-head p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--vr-muted);
+}
+.vr-head .vr-saved {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--vr-green-ink);
+}
+.vr-head .vr-saved.warn {
+  color: #9a6700;
+}
+
+/* Step indicator */
+.vr-steps-wrap {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--vr-line);
+}
+.vr-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vr-steps li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vr-muted);
+  white-space: nowrap;
+}
+.vr-steps li:not(:last-child) {
+  flex: 1;
+}
+.vr-steps li:not(:last-child)::after {
+  content: "";
+  flex: 1;
+  min-width: 12px;
+  height: 1px;
+  margin: 0 4px;
+  background: var(--vr-line);
+}
+.vr-steps li.done::after {
+  background: var(--vr-blue);
+}
+.vr-steps i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+.vr-steps .active {
+  color: var(--text);
+}
+.vr-steps .active i,
+.vr-steps .done i {
+  border-color: var(--vr-blue);
+  background: var(--vr-blue);
+  color: #fff;
+}
+/* A step with items still to correct: a red ring and dot. */
+.vr-steps .flagged i {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--vr-danger);
+}
+.vr-steps .vr-step-flag {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--vr-danger);
+}
+
+/* The form: a scrolling body of cards over a grey canvas, the actions underneath. */
+.vr-form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+.vr-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 10px 16px 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--vr-canvas);
+}
+
+/* A titled card (LAS .panel): the title carries a short blue bar. */
+.vr-section {
+  min-width: 0;
+  border: 1px solid var(--vr-line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+.vr-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #edf1f6;
+}
+.vr-section-head h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.vr-section-head h2::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: var(--vr-blue);
+}
+.vr-section-head p {
+  margin: 2px 0 0;
+  padding-left: 12px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--vr-muted);
+}
+.vr-section-head > :last-child:not(:first-child) {
+  flex-shrink: 0;
+}
+.vr-section-body {
+  padding: 10px 14px 12px;
+}
+
+/* Fields: three even columns, two on a tablet, one on a phone. */
+.vr-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 16px;
+  align-items: start;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.vr-grid > .vr-span-2 {
+  grid-column: span 2;
+}
+.vr-grid > :not(.vr-field) {
+  grid-column: 1 / -1;
+}
+.vr-fieldset {
+  transition: opacity 0.15s;
+}
+.vr-dim {
+  opacity: 0.5;
+}
+
+/* A field (the shared Input / SelectMenu / PhoneInput / AadhaarInput, given className="vr-field"): its caption in
+   LAS's style, sentence case on one line so the inputs of a row line up (a long one ends in "…", whole on hover). */
+.vr-field {
+  min-width: 0;
+}
+.vr-field > label {
+  margin-bottom: 3px;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  text-transform: none;
+  white-space: nowrap;
+  color: var(--vr-muted);
+}
+/* The required marker: never a coloured one. */
+.vr-field > label > span[aria-hidden="true"] {
+  margin-left: 2px;
+  color: var(--vr-muted);
+}
+.vr-field:focus-within > label {
+  color: var(--text);
+}
+/* A field the maker or checker sent back: its caption turns red as well as its input. */
+.vr-field:has(.app-field--flagged) > label,
+.vr-field:has(.app-field--flagged) > label > span[aria-hidden="true"] {
+  color: var(--vr-danger);
+}
+/* A message under a field: a red marker before the words. */
+.vr-field > p[id$="-error"]::before {
+  content: "!";
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--vr-danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  vertical-align: 1px;
+}
+/* Short values keep a short input instead of stretching across their column. */
+.vr-field.vr-narrow > div,
+.vr-field.vr-narrow > button {
+  max-width: 12rem;
+}
+
+/* Verify and the Verified badge beside an input. */
+.vr-verify-btn,
+.vr-verified {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.vr-verify-btn {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--vr-blue);
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+.vr-verify-btn:hover:not(:disabled) {
+  border-color: var(--vr-blue);
+  background: var(--vr-blue);
+  color: #fff;
+}
+.vr-verify-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.vr-verified {
+  background: var(--vr-green-soft);
+  color: var(--vr-green-ink);
+}
+
+/* Notes inside a card: the locked note (amber), the bank note (blue). */
+.vr-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 7px 12px;
+  border: 1px solid var(--vr-warn-border);
+  border-radius: var(--radius-sm);
+  background: var(--vr-warn-soft);
+  color: var(--vr-warn-ink);
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1.45;
+}
+.vr-note.info {
+  border-color: #c9d6f2;
+  background: var(--color-brand-50, #eef2fb);
+  color: var(--primary-dark);
+}
+.vr-note svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* Alerts above the cards (LAS .error / .notice). */
+.vr-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--vr-danger-border);
+  border-left: 4px solid var(--vr-danger);
+  border-radius: var(--radius-md);
+  background: var(--vr-danger-soft);
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.vr-alert svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--vr-danger);
+}
+
+/* Correction Required: the maker's / checker's remark and what they flagged (LAS .cq-return-note). */
+.vr-return {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--vr-warn-border);
+  border-left: 4px solid var(--vr-warn);
+  border-radius: var(--radius-md);
+  background: var(--vr-warn-soft);
+  color: var(--text);
+  font-size: 12.5px;
+}
+.vr-return-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 12px;
+}
+.vr-return h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 750;
+  color: var(--text);
+}
+.vr-return h2 svg {
+  color: #b07d00;
+}
+.vr-return-meta {
+  font-size: 11.5px;
+  color: var(--vr-muted);
+}
+.vr-return-remark {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 0.7);
+  line-height: 1.5;
+}
+.vr-return-remark b {
+  display: block;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--vr-muted);
+}
+.vr-return-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.vr-return-items li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 4px 6px 10px;
+  border: 1px solid #f1e3b5;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.vr-return-items li > svg {
+  flex: none;
+  margin-top: 2px;
+}
+.vr-return-items li.open > svg {
+  color: var(--vr-danger);
+}
+.vr-return-items li.done > svg {
+  color: var(--vr-green-ink);
+}
+.vr-return-items .vr-return-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.vr-return-items .vr-return-text small {
+  display: block;
+  color: var(--vr-muted);
+  font-size: 11.5px;
+}
+.vr-return-go {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  min-height: 40px;
+  margin: -6px 0;
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  color: var(--vr-blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+.vr-return-go:hover {
+  background: var(--surface-hover);
+}
+.vr-return-count {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vr-warn-ink);
+}
+/* Earlier corrections: collapsed under one line. */
+.vr-history {
+  border-top: 1px solid #f1e3b5;
+  padding-top: 6px;
+}
+.vr-history summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--vr-warn-ink);
+  cursor: pointer;
+  list-style: none;
+}
+.vr-history summary::-webkit-details-marker {
+  display: none;
+}
+.vr-history summary svg {
+  transition: transform 0.15s;
+}
+.vr-history[open] summary svg {
+  transform: rotate(90deg);
+}
+.vr-history ol {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.vr-history ol > li {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: rgb(255 255 255 / 0.7);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.vr-history ol > li > b {
+  display: block;
+  font-size: 11.5px;
+}
+.vr-history ol > li > span {
+  display: block;
+  color: var(--vr-muted);
+}
+.vr-history ul {
+  margin: 2px 0 0;
+  padding-left: 16px;
+}
+
+/* Footer of the step: Save draft on the left, Back and Continue on the right. Sticks to the bottom of the screen
+   while the page scrolls (phones, short windows); with the body scrolling inside, it simply sits under it. */
+.vr-foot {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--vr-line);
+  background: var(--surface);
+  box-shadow: 0 -4px 14px rgb(11 55 104 / 0.07);
+}
+.vr-foot-actions,
+.vr-actions {
+  display: flex;
+  gap: 8px;
+}
+.vr-btn {
+  min-height: 40px;
+  gap: 6px;
+  padding: 0 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: none;
+}
+.vr-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Review: label / value groups, three to a row. */
+.vr-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  transition: border-color 0.15s, color 0.15s;
+}
+.vr-edit:hover {
+  border-color: var(--vr-blue);
+  color: var(--vr-blue);
+}
+.vr-review {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 22px;
+  margin: 0;
+}
+.vr-review dt {
+  margin-bottom: 2px;
+  font-size: 11px;
+  color: var(--vr-muted);
+}
+.vr-review dd {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+.vr-review .wide {
+  grid-column: span 2;
+}
+/* A value sent back for correction and not yet dealt with. */
+.vr-review .flagged dt {
+  font-weight: 650;
+  color: var(--vr-danger);
+}
+.vr-review .flagged dd {
+  color: var(--vr-danger);
+}
+.vr-review-docs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.vr-declare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+.vr-declare-checks {
+  display: grid;
+  flex: 1 1 520px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Supporting documents, compact: as many to a row as fit, a slim drop zone. */
+.vr-docs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 8px;
+}
+
+/* Terms dialog (LAS Modal: head, scrolling body, foot). */
+.vr-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.vr-modal-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.vr-modal-head p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.vr-modal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle);
+}
+.vr-modal-foot small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Fine pointers on a wide screen take LAS's denser controls; touch keeps 40px targets. */
+@media (min-width: 1024px) and (pointer: fine) {
+  .vr-screen .app-field {
+    min-height: 36px;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
+  }
+  .vr-screen .vr-verify-btn,
+  .vr-screen .vr-verified {
+    min-height: 36px;
+  }
+  .vr-btn {
+    min-height: 36px;
+  }
+}
+
+@media (max-width: 1100px) {
+  .vr-review {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .vr-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .vr-steps li span {
+    display: none;
+  }
+  /* On a phone only the current step keeps its name. */
+  .vr-steps li.active span {
+    display: inline;
+  }
+  /* The review keeps two values to a row on a phone (LAS goes to one): half the scrolling. */
+  .vr-declare-checks {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .vr-screen {
+    border-radius: var(--radius-md);
+  }
+  .vr-head,
+  .vr-steps-wrap {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .vr-body {
+    padding: 8px;
+  }
+  .vr-section-head,
+  .vr-section-body {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .vr-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vr-grid > .vr-span-2 {
+    grid-column: auto;
+  }
+  .vr-field.vr-narrow > div,
+  .vr-field.vr-narrow > button {
+    max-width: none;
+  }
+  .vr-foot {
+    padding: 8px 12px;
+  }
+  .vr-btn {
+    padding: 0 12px;
+  }
+  .vr-hide-xs {
+    display: none;
+  }
+  .vr-actions {
+    width: 100%;
+  }
+  .vr-actions > * {
+    flex: 1;
+  }
+}

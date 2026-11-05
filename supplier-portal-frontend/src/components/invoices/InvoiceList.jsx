@@ -20,7 +20,7 @@ import {
 import { getInvoiceReturnReasons, replaceInvoice } from '../../api/vendorApi'
 import useAuth from '../../hooks/useAuth'
 import { displayProfileValue } from '../layout/profileFields'
-import { statusDetails } from '../../utils/invoiceStatus'
+import { invoiceProgress, statusDetails } from '../../utils/invoiceStatus'
 import ReplaceInvoiceModal from './ReplaceInvoiceModal'
 import VendorDocumentsTab from './VendorDocumentsTab'
 import useAgreementHold, { HOLD_TOOLTIP } from '../../hooks/useAgreementHold'
@@ -555,6 +555,7 @@ function InvoiceDetailModal({ preview, onClose, onReplace, replaceBusy = false, 
             </div>
           )
         })()}
+        {!viewing && <InvoiceProgress invoice={shown} />}
         <div className="grid min-h-0 flex-1 grid-cols-1 overflow-y-auto lg:grid-cols-[58%_42%] lg:grid-rows-1 lg:overflow-hidden">
           <div className="flex min-h-[420px] flex-col border-b lg:min-h-0 border-[#d8e0e9] lg:border-b-0 lg:border-r">
             <div className="flex shrink-0 gap-5 border-b border-[#d8e0e9] px-5 text-xs" role="tablist">
@@ -744,5 +745,25 @@ function VendorInfoModal({ invoice, onClose }) {
       </section>
     </div>,
     document.body,
+  )
+}
+
+// The invoice's journey in one line: Submitted, Verification, Approval, Processed (utils/invoiceStatus invoiceProgress).
+const STEP_TONE = {
+  done: 'border-emerald-200 bg-emerald-50 text-emerald-800',
+  current: 'border-[#0046dc] bg-[#eef2fb] text-[#0046dc]',
+  upcoming: 'border-[#d8e0e9] bg-white text-[#8a94a3]',
+  stopped: 'border-red-200 bg-red-50 text-red-700',
+}
+function InvoiceProgress({ invoice }) {
+  return (
+    <ol className="flex shrink-0 flex-wrap items-center gap-1 border-b border-[#d8e0e9] px-5 py-2" aria-label="Invoice progress">
+      {invoiceProgress(invoice).map((step, i) => (
+        <li key={step.key} className="flex items-center gap-1">
+          {i > 0 && <span className="h-px w-3 bg-[#c2cdda] sm:w-5" aria-hidden="true" />}
+          <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-bold ${STEP_TONE[step.state]}`} aria-current={step.state === 'current' ? 'step' : undefined}>{step.label}</span>
+        </li>
+      ))}
+    </ol>
   )
 }

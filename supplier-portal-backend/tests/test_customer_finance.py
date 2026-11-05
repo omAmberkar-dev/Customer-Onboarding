@@ -31,9 +31,18 @@ FINANCE = {
     ],
     "schedule": [{"disbursementNo": "23000068", "instalment": 1, "dueDate": "2026-10-31", "kind": "interest", "description": "Interest",
                   "amount": 7857.53, "paid": 3000, "outstanding": 4857.53, "status": "overdue"}],
-    "payments": [{"receiptNo": "7001", "paymentDate": "2026-10-05", "reference": "UTR7001", "amount": 12000, "status": "confirmed"}],
+    "payments": [{"receiptNo": "7001", "paymentDate": "2026-10-05", "reference": "UTR7001", "disbursementNo": "", "amount": 12000,
+                  "status": "confirmed", "allocationStatus": "partially_allocated"}],
     "summary": {"disbursed": 1000000, "outstanding": 1004857.53},
     "available": {"flows": True, "schedule": True, "payments": True, "allocations": True},
+}
+# Another customer's answer (portal 86), as LAS gives it to 86 only.
+OTHER = {
+    "onboarded": True, "customerNo": "100600", "customerName": "Heron Fabrics", "facilities": [{"sanctionNo": "100434"}],
+    "drawdowns": [{"applicationNo": "703", "disbursementNo": "23000077", "status": "disbursed"}],
+    "transactions": [{"id": "disb-23000077", "date": "2026-09-05", "reference": "23000077", "disbursementNo": "23000077",
+                      "type": "disbursement", "inflow": 1000000, "outflow": 0, "status": "posted"}],
+    "schedule": [], "payments": [], "summary": {}, "available": {"flows": True, "schedule": True, "payments": True, "allocations": True},
 }
 
 
@@ -49,7 +58,9 @@ class FakeLas(BaseHTTPRequestHandler):
         if FakeLas.answer:
             return self._send(*FakeLas.answer)
         if url.path == "/api/customer-portal/finance":
-            return self._send(200, FINANCE)
+            # LAS scopes by the portal id it is given: each customer's own answer.
+            portal_id = parse_qs(url.query).get("portalId", [""])[0]
+            return self._send(200, {"84": FINANCE, "86": OTHER}.get(portal_id, {"onboarded": False}))
         return self._send(404, {"error": "Not found."})
 
     def _send(self, status, body):
@@ -78,7 +89,7 @@ def client(tmp_path, monkeypatch, las):
     db = sqlite3.connect(path)
     db.executescript("""
         CREATE TABLE vendor (vendor_id INTEGER PRIMARY KEY, email TEXT, status TEXT, submission_round INTEGER);
-        INSERT INTO vendor VALUES (84, 'c@x.test', 'active', 1), (85, 'd@x.test', 'Pending', 1);
+        INSERT INTO vendor VALUES (84, 'c@x.test', 'active', 1), (85, 'd@x.test', 'Pending', 1), (86, 'e@x.test', 'active', 1);
     """)
     db.close()
     monkeypatch.setattr(auth, "get_connection", lambda: sqlite_db.Connection(path))
@@ -179,3 +190,33 @@ def test_filters_match_the_screen():
     assert customer_finance.filtered(None, "payments", {}) == []
     assert customer_finance._money_text(1234567.8) == "12,34,567.80"
     assert customer_finance._money_text(567) == "567.00"
+
+
+def test_each_signed_in_customer_gets_only_their_own_finance(client):
+    mine = client.get("/vendors/me/finance", headers=signed_in(84)).get_data(as_text=True)
+    theirs = client.get("/vendors/me/finance?portalId=84", headers=signed_in(86)).get_json()
+    assert theirs["customerNo"] == "100600"
+    assert [call["query"]["portalId"] for call in FakeLas.calls] == [["84"], ["86"]]
+    # Neither answer carries the other customer's sanction, drawdown or name.
+    assert "100434" not in mine and "23000077" not in mine and "Heron" not in mine
+    assert "100411" not in str(theirs) and "Osprey" not in str(theirs)
+
+
+def test_a_statement_never_lists_another_customers_rows(client):
+    # 23000077 is portal 86's drawdown: asked for by 84 it matches nothing in 84's own answer.
+    r = client.get("/vendors/me/finance/statement?section=transactions&format=xlsx&disbursement=23000077", headers=signed_in(84))
+    assert r.status_code == 200
+    with zipfile.ZipFile(io.BytesIO(r.get_data())) as book:
+        sheet = book.read("xl/worksheets/sheet1.xml").decode()
+    assert '<row r="2">' not in sheet and "23000077" not in sheet
+    assert all(call["query"]["portalId"] == ["84"] for call in FakeLas.calls)
+
+
+def test_the_receipts_statement_filters_and_names_the_allocation_status(client):
+    r = client.get("/vendors/me/finance/statement?section=payments&format=xlsx&type=partially_allocated", headers=signed_in(84))
+    with zipfile.ZipFile(io.BytesIO(r.get_data())) as book:
+        sheet = book.read("xl/worksheets/sheet1.xml").decode()
+    assert "UTR7001" in sheet and "Partially allocated" in sheet and "Allocation" in sheet
+    r = client.get("/vendors/me/finance/statement?section=payments&format=xlsx&type=unallocated", headers=signed_in(84))
+    with zipfile.ZipFile(io.BytesIO(r.get_data())) as book:
+        assert "UTR7001" not in book.read("xl/worksheets/sheet1.xml").decode()

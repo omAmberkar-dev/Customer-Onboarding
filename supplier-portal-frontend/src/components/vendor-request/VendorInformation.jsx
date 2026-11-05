@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Building2, Lock } from 'lucide-react'
+import { Lock } from 'lucide-react'
 import Input from '../common/Input'
 import AadhaarInput from '../common/AadhaarInput'
 import SelectMenu from '../common/SelectMenu'
@@ -177,18 +177,19 @@ export default function VendorInformation({ register, errors, watch, setValue, s
   })
 
   return (
-    <FormSection icon={Building2} title="Customer information" description="Provide the customer’s legal and commercial profile.">
+    <FormSection title="Customer information" description="Provide the customer’s legal and commercial profile.">
       {disabled && (
-        <p role="status" className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-          <Lock size={14} className="shrink-0" />
+        <p role="status" className="vr-note">
+          <Lock size={14} aria-hidden="true" />
           Enter a valid phone number above to fill in the customer information.
         </p>
       )}
       {/* A disabled fieldset disables every native control inside it, including the custom selects. */}
-      {/* Three columns from tablet width up, so the rows read: GSTIN + legal name / PAN, Aadhaar, registration no. /
-          type, year, currency / MSME, CIN or Udyam, relationship manager. */}
-      <fieldset disabled={disabled} className={`grid min-w-0 gap-x-3.5 gap-y-2.5 transition-opacity md:grid-cols-3 ${disabled ? 'opacity-50' : ''}`}>
+      {/* LAS's order, three to a row: GSTIN (its check fills the legal name, PAN and address), PAN, Aadhaar / legal name,
+          registration no. / type, year, currency / MSME, CIN or Udyam, relationship manager. */}
+      <fieldset disabled={disabled} className={`vr-grid vr-fieldset ${disabled ? 'vr-dim' : ''}`}>
         <Input
+          className="vr-field"
           label="GSTIN"
           name="gstin"
           register={register}
@@ -205,16 +206,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           )}
         />
         <Input
-          className="md:col-span-2"
-          label="Customer legal name"
-          name="vendorLegalName"
-          register={register}
-          error={errors.vendorLegalName}
-          hint={lockedFields.includes('vendorLegalName') ? 'Filled automatically from GSTIN verification' : undefined}
-          locked={lockedFields.includes('vendorLegalName')}
-          required
-        />
-        <Input
+          className="vr-field"
           label="PAN"
           name="pan"
           register={register}
@@ -227,6 +219,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           required
         />
         <AadhaarInput
+          className="vr-field"
           label="Aadhaar number"
           name="aadhaar"
           register={register}
@@ -237,6 +230,17 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           )) : undefined}
         />
         <Input
+          className="vr-field vr-span-2"
+          label="Customer legal name"
+          name="vendorLegalName"
+          register={register}
+          error={errors.vendorLegalName}
+          hint={lockedFields.includes('vendorLegalName') ? 'Filled automatically from GSTIN verification' : undefined}
+          locked={lockedFields.includes('vendorLegalName')}
+          required
+        />
+        <Input
+          className="vr-field"
           label="Company registration number"
           name="registrationNumber"
           register={register}
@@ -244,6 +248,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           required
         />
         <SelectMenu
+          className="vr-field"
           label="Customer type"
           name="vendorType"
           register={register}
@@ -254,6 +259,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           required
         />
         <Input
+          className="vr-field vr-narrow"
           label="Year established"
           name="yearEstablished"
           inputMode="numeric"
@@ -262,6 +268,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           placeholder="2014"
         />
         <SelectMenu
+          className="vr-field"
           label="Transaction currency"
           name="currency"
           register={register}
@@ -272,6 +279,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           required
         />
         <SelectMenu
+          className="vr-field"
           label="MSME status"
           name="msmeStatus"
           register={register}
@@ -283,6 +291,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
         />
         {(cinApplies(msmeStatus) || cinFlagged) && (
           <Input
+            className="vr-field"
             label="CIN"
             name="cin"
             maxLength={21}
@@ -295,6 +304,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
         )}
         {(msmeStatus === 'Registered' || udyamFlagged) && (
           <Input
+            className="vr-field"
             label="MSME / Udyam registration number"
             name="udyamNumber"
             maxLength={30}
@@ -304,6 +314,7 @@ export default function VendorInformation({ register, errors, watch, setValue, s
           />
         )}
         <SelectMenu
+          className="vr-field"
           label="Relationship manager"
           name="assignedRm"
           register={register}

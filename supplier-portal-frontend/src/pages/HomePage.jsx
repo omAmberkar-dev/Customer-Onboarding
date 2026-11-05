@@ -71,7 +71,7 @@ function FinanceOverview({ finance }) {
   const s = data.summary
   const next = s.nextDue
   return (
-    <section aria-label="Financial overview" className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+    <section aria-label="Financial overview" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 xl:grid-cols-6">
       <FinanceKpi label="Total sanctioned" value={formatMoney(s.sanctioned)} caption={`${data.facilities.length} approved facilit${data.facilities.length === 1 ? 'y' : 'ies'}`} icon={Landmark} />
       <FinanceKpi label="Total disbursed" value={formatMoney(s.disbursed)} caption="Posted payouts" icon={Banknote} tone="navy" unavailable={!data.available.flows} />
       <FinanceKpi label="Total outstanding" value={formatMoney(s.outstanding)} caption="Principal + dues already due" icon={Scale} tone="amber" unavailable={s.outstanding === null} />
@@ -88,7 +88,7 @@ function Obligations({ finance }) {
   const today = new Date().toISOString().slice(0, 10)
   const rows = schedule ? instalmentsOf(schedule).filter((r) => r.outstanding > 0 && r.dueDate >= today).sort((a, b) => a.dueDate.localeCompare(b.dueDate)).slice(0, 4) : []
   return (
-    <Panel title="Upcoming obligations" subtitle="Your next instalments" action={<Link to="/repayments" className="inline-flex min-h-7 items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Schedule <ArrowRight size={13} /></Link>}>
+    <Panel title="Upcoming obligations" subtitle="Your next instalments" action={<Link to="/repayments" className="inline-flex min-h-7 items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Cashflows <ArrowRight size={13} /></Link>}>
       {!finance.data?.onboarded ? <p className="text-xs text-slate-500">Nothing scheduled yet.</p>
         : schedule === null ? <p className="text-xs text-slate-500">Your schedule can’t be shown right now.</p>
           : rows.length === 0 ? <p className="rounded-lg bg-[#f7f9fc] px-3 py-3 text-center text-xs text-slate-500">No upcoming instalments.</p>
@@ -203,7 +203,7 @@ function Upcoming({ home, loans }) {
 
 const QUICK_ACTIONS = [
   { icon: FilePlus2, title: 'Upload invoice', text: 'Submit your invoice for processing', to: '/invoices' },
-  { icon: Landmark, title: 'View loans', text: 'Your sanctions, drawdowns and their memos', to: '/loans' },
+  { icon: Landmark, title: 'Loans & Sanctions', text: 'Your sanctions, drawdowns and their memos', to: '/loans' },
   { icon: Replace, title: 'Request a change', text: 'Ask to update your details', profile: true },
   { icon: UserRound, title: 'View profile', text: 'Your account and company details', profile: true },
 ]
@@ -280,7 +280,7 @@ export default function HomePage() {
             {finance.data?.onboarded && (
               <div className="grid min-w-0 gap-3 2xl:grid-cols-2">
                 <Panel title="Loan utilisation" subtitle="Sanctioned limit, utilised and available, by facility"><UtilisationChart facilities={finance.data.facilities} /></Panel>
-                <Panel title="Monthly financial activity" subtitle="Posted inflows and outflows" action={<Link to="/cashflow" className="inline-flex min-h-7 items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Cashflow <ArrowRight size={13} /></Link>}>
+                <Panel title="Monthly financial activity" subtitle="Posted inflows and outflows" action={<Link to="/cashflow" className="inline-flex min-h-7 items-center gap-1 text-xs font-semibold text-brand-700 hover:underline">Transactions <ArrowRight size={13} /></Link>}>
                   <MonthlyChart monthly={finance.data.summary.monthly} height={160} />
                 </Panel>
               </div>

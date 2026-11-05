@@ -3,7 +3,7 @@ import { NAV_ITEMS, SUPPORT_EMAIL, isActivePath } from './navigation'
 import { displayName, greetingName } from '../../utils/customer'
 
 // Every route the sidebar can send a customer to must exist (src/routes/AppRoutes.jsx).
-const ROUTES = ['/home', '/loans', '/drawdowns', '/repayments', '/cashflow', '/invoices', '/payments', '/documents', '/update-requests', '/support']
+const ROUTES = ['/home', '/loans', '/drawdowns', '/repayments', '/cashflow', '/invoices', '/payments', '/update-requests', '/support']
 
 describe('navigation', () => {
   it('links only to routes that exist; Profile opens the panel', () => {
@@ -11,8 +11,14 @@ describe('navigation', () => {
       if (item.profile) expect(item.to).toBeUndefined()
       else expect(ROUTES).toContain(item.to)
     }
-    expect(NAV_ITEMS.map((i) => i.label)).toEqual(['Dashboard', 'My Loans & Sanctions', 'Drawdown History', 'Repayment Schedule', 'Cashflow & Transactions',
-      'Invoice Management', 'Payments & Receipts', 'Documents', 'Change Requests', 'Profile', 'Help & Support'])
+    expect(NAV_ITEMS.map((i) => i.label)).toEqual(['Dashboard', 'Loans & Sanctions', 'Drawdown History', 'Cashflows', 'Transactions',
+      'Invoice Management', 'Receipts', 'Change Requests', 'Profile', 'Help & Support'])
+  })
+
+  it('keeps the module paths links already point at, and has no Documents entry for now', () => {
+    const path = (name) => NAV_ITEMS.find((i) => i.label === name).to
+    expect([path('Cashflows'), path('Transactions'), path('Receipts'), path('Loans & Sanctions')]).toEqual(['/repayments', '/cashflow', '/payments', '/loans'])
+    expect(NAV_ITEMS.some((i) => i.to === '/documents' || /document/i.test(i.label))).toBe(false)
   })
 
   it('has no entry point into the Agreement section for this release', () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Eye, EyeOff, Landmark, ShieldAlert } from 'lucide-react'
+import { Eye, EyeOff, ShieldAlert } from 'lucide-react'
 import Input from '../common/Input'
 import FormSection from './FormSection'
 
@@ -7,17 +7,15 @@ export default function BankDetails({ register, errors }) {
   const [showAccountNumber, setShowAccountNumber] = useState(false)
 
   return (
-    <FormSection
-      icon={Landmark}
-      title="Bank details"
-      description="Used to pay your invoices. Your progress is saved to your account, not to this browser."
-    >
-      <div className="mb-4 flex items-start gap-2.5 rounded-lg border border-[#b3c3e4] bg-brand-50 px-3 py-2 text-xs leading-5 text-brand-700">
-        <ShieldAlert size={17} className="mt-0.5 shrink-0" />
+    <FormSection title="Bank details" description="Used to pay your invoices. Your progress is saved to your account, not to this browser.">
+      <p className="vr-note info">
+        <ShieldAlert size={16} aria-hidden="true" />
         <span>Double-check the account number and IFSC code: they must match your bank proof exactly.</span>
-      </div>
-      <div className="form-grid">
+      </p>
+      {/* LAS's order: holder, bank and IFSC on the first line; the account number and the branch on the next. */}
+      <div className="vr-grid">
         <Input
+          className="vr-field"
           label="Account holder name"
           name="accountHolderName"
           register={register}
@@ -26,6 +24,7 @@ export default function BankDetails({ register, errors }) {
           required
         />
         <Input
+          className="vr-field"
           label="Bank name"
           name="bankName"
           register={register}
@@ -33,8 +32,17 @@ export default function BankDetails({ register, errors }) {
           autoComplete="off"
           required
         />
-        <Input label="Branch name" name="branchName" register={register} error={errors.branchName} required />
         <Input
+          className="vr-field"
+          label="IFSC code"
+          name="ifsc"
+          register={register}
+          error={errors.ifsc}
+          hint="11 characters, e.g. HDFC0001234"
+          required
+        />
+        <Input
+          className="vr-field"
           label="Account number"
           name="accountNumber"
           type={showAccountNumber ? 'text' : 'password'}
@@ -55,14 +63,7 @@ export default function BankDetails({ register, errors }) {
           )}
           required
         />
-        <Input
-          label="IFSC code"
-          name="ifsc"
-          register={register}
-          error={errors.ifsc}
-          hint="11 characters, e.g. HDFC0001234"
-          required
-        />
+        <Input className="vr-field" label="Branch name" name="branchName" register={register} error={errors.branchName} required />
       </div>
     </FormSection>
   )

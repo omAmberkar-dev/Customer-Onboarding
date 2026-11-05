@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { AlertCircle, Eye, FileText, Paperclip, UploadCloud, X } from 'lucide-react'
+import { AlertCircle, Eye, FileText, UploadCloud, X } from 'lucide-react'
 import Loader from '../common/Loader'
 import FormSection from './FormSection'
 import FlagNote from '../common/FlagNote'
@@ -57,9 +57,9 @@ function DocumentSlot({ type, files, onPick, onRemovePicked, onRetry, uploadStat
   }
 
   return (
-    <div id={`doc-${type.key}`} className={`flex h-full min-w-0 flex-col rounded-lg border bg-white p-3 ${flag?.status === 'open' ? 'border-red-300 bg-red-50/40' : 'border-slate-200'}`}>
-      <div className="mb-2 min-h-9">
-        <p className="text-[11px] font-bold uppercase tracking-[0.04em] text-navy-900">{type.label}</p>
+    <div id={`doc-${type.key}`} className={`flex h-full min-w-0 flex-col rounded-lg border bg-white px-2.5 py-2 ${flag?.status === 'open' ? 'border-red-300 bg-red-50/40' : 'border-slate-200'}`}>
+      <div className="mb-1.5">
+        <p className="text-xs font-bold text-navy-900">{type.label}</p>
         {type.hint && <p className="text-[11px] leading-4 text-slate-500">{type.hint}</p>}
       </div>
 
@@ -181,7 +181,7 @@ function DocumentSlot({ type, files, onPick, onRemovePicked, onRetry, uploadStat
           onDragLeave={() => setDragActive(false)}
           onDrop={(event) => { event.preventDefault(); setDragActive(false); addFiles(event.dataTransfer.files) }}
           aria-label={`${files.length === 0 && existing.length === 0 ? 'Upload' : multiple ? 'Add another file to' : 'Replace'} ${type.label}`}
-          className={`mt-auto flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-dashed px-3 text-xs font-bold transition ${dragActive ? 'border-brand-500 bg-[#eef2fb] text-brand-700' : 'border-[#c2cdda] bg-[#fbfcfe] text-brand-600 hover:border-[#b3c3e4] hover:bg-[#eef2fb]/40'}`}
+          className={`mt-auto flex min-h-10 w-full items-center justify-center gap-2 rounded-md border border-dashed px-3 text-xs font-bold transition ${dragActive ? 'border-brand-500 bg-[#eef2fb] text-brand-700' : 'border-[#c2cdda] bg-[#fbfcfe] text-brand-600 hover:border-[#b3c3e4] hover:bg-[#eef2fb]/40'}`}
         >
           <UploadCloud size={16} aria-hidden="true" />
           {files.length === 0 && existing.length === 0 ? 'Click or drag a file' : multiple ? 'Add another file' : 'Replace file'}
@@ -208,12 +208,12 @@ const FILE_NAME_STYLE = { fontSize: '0.75rem', lineHeight: '1rem' }
 export default function SupportingDocuments({ documents, onPick, onRemovePicked, onRetry, uploadState = {}, uploading = false, existing = {}, onDeleteExisting, onPreview, flags = {}, onConfirm, onUnconfirm }) {
   return (
     <FormSection
-      icon={Paperclip}
       title="Upload supporting documents"
       description="Attach documents that support the details above. PDF, JPG or PNG, up to 5 MB each. Files upload as soon as you pick them. A new file replaces the one uploaded, or remove it with the x."
     >
       {uploading && <p className="mb-2 flex items-center gap-2 text-xs font-semibold text-slate-600" role="status"><Loader /> Uploading documents…</p>}
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-[repeat(2,minmax(0,1fr))] xl:grid-cols-[repeat(3,minmax(0,1fr))]">
+      {/* LAS's compact slots: as many to a row as fit, never narrower than 220px. */}
+      <div className="vr-docs">
         {documentTypes.map((type) => (
           <DocumentSlot
             key={type.key}

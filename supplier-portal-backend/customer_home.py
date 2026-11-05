@@ -48,6 +48,9 @@ INVOICE_GROUP_NAMES = ("in_review", "approved", "returned", "rejected", "other")
 # The customer-facing events of audit_log, by entity type and action. Everything else (staff steps, SAP sync, holds)
 # stays internal. Agreements and change requests are read from their own tables, so their audit rows are not used.
 VENDOR_EVENTS = {
+    "submitted": ("onboarding", "Application submitted"),
+    "resubmitted": ("onboarding", "Corrected application resubmitted for review"),
+    "approval_recorded": ("onboarding", "Application approved"),  # only the final approval (APPROVED_STATUSES); the steps are internal
     "documents_uploaded": ("onboarding", "Documents uploaded"),
     "returned": ("onboarding", "Application returned to you for correction"),
     "returned_for_correction": ("onboarding", "Application returned to you for correction"),
@@ -56,6 +59,7 @@ VENDOR_EVENTS = {
     "sap_business_partner_created": ("onboarding", "Customer account set up"),
     "support_request_sent": ("support", "Support message sent"),
 }
+APPROVED_STATUSES = ("active", "approved", "02")
 INVOICE_EVENTS = {
     "returned": "Invoice returned to you for correction",
     "rejected": "Invoice not approved",
@@ -180,10 +184,22 @@ def _vendor_events(cursor, vendor_id):
         f"AND action IN ({', '.join(['%s'] * len(actions))})",
         (str(vendor_id), *actions),
     )
-    # Only a support message carries a reference the customer knows (its request id); nothing else of after_value leaves.
-    return [{"at": r["created_at"], "category": VENDOR_EVENTS[r["action"]][0], "title": VENDOR_EVENTS[r["action"]][1],
-             "reference": (_json(r["after_value"]) or {}).get("request_id") if r["action"] == "support_request_sent" else None}
-            for r in cursor.fetchall()]
+    # Only a support message's request id and a resubmission's round are references the customer knows; nothing else of
+    # after_value leaves (it also holds the LAS user and remarks of a review step).
+    events = []
+    for r in cursor.fetchall():
+        after = _json(r["after_value"])
+        after = after if isinstance(after, dict) else {}
+        if r["action"] == "approval_recorded" and str(after.get("status") or "").strip().lower() not in APPROVED_STATUSES:
+            continue
+        reference = None
+        if r["action"] == "support_request_sent":
+            reference = after.get("request_id")
+        elif r["action"] == "resubmitted" and isinstance(after.get("round"), int):
+            reference = f"Round {after['round']}"
+        events.append({"at": r["created_at"], "category": VENDOR_EVENTS[r["action"]][0], "title": VENDOR_EVENTS[r["action"]][1],
+                       "reference": reference})
+    return events
 
 
 def _invoice_events(cursor, vendor_id):

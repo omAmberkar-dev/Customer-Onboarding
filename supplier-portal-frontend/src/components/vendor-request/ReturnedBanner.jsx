@@ -1,48 +1,101 @@
-import { AlertTriangle, ArrowRight, Check, CircleDashed } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Check, ChevronRight, CircleDashed } from 'lucide-react'
+import { FORM_FIELD_BY_KEY, isDocumentKey } from '../../utils/rejectionFields'
 
 const formatDate = (value) => {
   const date = value ? new Date(value) : null
   return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
 }
 
-// Shown on every step of a returned application: why it came back and what is left to fix. `items` is
-// [{ key, label, reasons, status, step }]; `onGo` jumps to the field (changing step if needed).
-export default function ReturnedBanner({ rejection, items, onGo }) {
+// "the maker" / "the checker", as LAS records who returned it; "our team" when it does not say.
+const byWhom = (role) => {
+  const name = String(role ?? '').trim().toLowerCase()
+  return name ? `the ${name}` : 'our team'
+}
+
+const reasonText = (label, remark) => (remark ? `${label}: ${remark}` : label)
+
+// What one return said, on one line: who returned it, when, and in which round.
+const returnedLine = (entry) => [
+  `Returned by ${byWhom(entry.rejected_by_role)}${formatDate(entry.rejected_at) ? ` on ${formatDate(entry.rejected_at)}` : ''}`,
+  entry.round_no ? `Round ${entry.round_no}` : '',
+].filter(Boolean).join(' · ')
+
+// Past returns that were corrected and resubmitted (newest first), collapsed under one line so they never push the form down.
+function EarlierCorrections({ history }) {
+  const sorted = [...history].sort((a, b) => String(b.rejected_at ?? '').localeCompare(String(a.rejected_at ?? '')))
+  return (
+    <details className="vr-history">
+      <summary><ChevronRight size={14} aria-hidden="true" /> Earlier corrections ({history.length})</summary>
+      <ol>
+        {sorted.map((entry, index) => (
+          <li key={entry.rejection_id ?? `${entry.round_no}-${index}`}>
+            <b>{returnedLine(entry)}</b>
+            {formatDate(entry.resubmitted_at) && <span>Resubmitted on {formatDate(entry.resubmitted_at)}</span>}
+            {entry.overall_remark && <span>“{entry.overall_remark}”</span>}
+            {entry.items?.length > 0 && (
+              <ul>
+                {entry.items.map((item, itemIndex) => (
+                  <li key={item.item_id ?? itemIndex}>{item.field_label ? `${item.field_label} — ` : ''}{reasonText(item.reason_label, item.remark)}</li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ol>
+    </details>
+  )
+}
+
+// Shown on every step of a returned application, in LAS's return-note look: "Correction Required", who returned it, their
+// remark and every item they raised. `items` is [{ key, label, reasons, status, step }] for the flagged fields and documents;
+// `onGo` jumps to one (changing step if needed). A reason that names no field ("Other") is listed with nothing to jump to.
+// `history` is the earlier returns (correction_history), shown collapsed when there are any.
+export default function ReturnedBanner({ rejection, items, onGo, history = [] }) {
   const open = items.filter((item) => item.status === 'open').length
+  const general = (rejection.items || []).filter((item) => !isDocumentKey(item.field_key) && !FORM_FIELD_BY_KEY[item.field_key])
 
   return (
-    <section role="region" aria-label="Application returned" className="mb-4 rounded-xl border border-red-200 bg-red-50/70 p-4">
-      <div className="flex items-start gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-full bg-red-100 text-red-700"><AlertTriangle size={18} /></span>
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-extrabold text-red-900">Your application needs a few corrections</h3>
-          <p className="mt-0.5 text-xs leading-5 text-red-900/80">
-            It was returned by our team{formatDate(rejection.rejected_at) && ` on ${formatDate(rejection.rejected_at)}`}.
-            Fix the items below (or confirm they are correct), then resubmit. {open === 0
-              ? 'Everything is handled: review and resubmit.'
-              : `${open} of ${items.length} still to do.`}
-          </p>
-          {rejection.overall_remark && (
-            <p className="mt-2 rounded-lg border border-red-200 bg-white/70 px-3 py-2 text-xs leading-5 text-red-900"><strong>Note from our team:</strong> {rejection.overall_remark}</p>
-          )}
-          <ul className="mt-3 grid gap-1.5">
-            {items.map((item) => (
-              <li key={item.key} className="flex items-start gap-2 rounded-lg border border-red-100 bg-white px-3 py-2 text-xs">
-                <span className={`mt-0.5 shrink-0 ${item.status === 'open' ? 'text-red-500' : 'text-emerald-600'}`}>
-                  {item.status === 'open' ? <CircleDashed size={14} /> : <Check size={14} />}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <strong className="text-navy-900">{item.label}</strong>
-                  <span className="text-slate-600"> — {item.reasons.map((reason) => reason.label).join('; ')}</span>
-                </span>
-                <button type="button" onClick={() => onGo(item)} className="inline-flex shrink-0 items-center gap-1 font-bold text-brand-600 hover:text-brand-700">
-                  {item.status === 'open' ? 'Fix' : 'View'} <ArrowRight size={12} />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+    <section role="region" aria-label="Correction required" className="vr-return">
+      <div className="vr-return-top">
+        <h2><AlertTriangle size={16} aria-hidden="true" /> Correction Required</h2>
+        <span className="vr-return-meta">{returnedLine(rejection)}</span>
       </div>
+      {rejection.overall_remark && (
+        <p className="vr-return-remark"><b>Remark from {byWhom(rejection.rejected_by_role)}</b>{rejection.overall_remark}</p>
+      )}
+      {items.length + general.length > 0 && (
+        <ul className="vr-return-items" aria-label="Items to correct">
+          {items.map((item) => (
+            <li key={item.key} className={item.status === 'open' ? 'open' : 'done'}>
+              {item.status === 'open' ? <CircleDashed size={14} aria-hidden="true" /> : <Check size={14} aria-hidden="true" />}
+              <span className="vr-return-text">
+                <strong>{item.label}</strong>
+                <small>{item.reasons.map((reason) => reasonText(reason.label, reason.remark)).join('; ')}</small>
+              </span>
+              <button type="button" onClick={() => onGo(item)} className="vr-return-go" aria-label={`${item.status === 'open' ? 'Fix' : 'View'} ${item.label}`}>
+                {item.status === 'open' ? 'Fix' : 'View'} <ArrowRight size={12} aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+          {general.map((item, index) => (
+            <li key={item.item_id ?? `general-${index}`} className="open">
+              <CircleDashed size={14} aria-hidden="true" />
+              <span className="vr-return-text">
+                <strong>{item.field_label || 'General'}</strong>
+                <small>{reasonText(item.reason_label, item.remark)}</small>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {items.length > 0 && (
+        <p className="vr-return-count" role="status">
+          {open === 0
+            ? 'Everything is handled: review and resubmit.'
+            : `${open} of ${items.length} still to fix. Update each one, or confirm it is correct as entered, then resubmit for review.`}
+        </p>
+      )}
+      {history.length > 0 && <EarlierCorrections history={history} />}
     </section>
   )
 }

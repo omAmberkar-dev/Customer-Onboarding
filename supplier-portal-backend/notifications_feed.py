@@ -16,11 +16,13 @@ read mark stays with it.
 The workflows and where each stage comes from (each source optional: one that cannot be read is named in `unavailable`
 and the rest still show):
 
-    onboarding      submitted (vendor.submitted_at); with the maker / with the checker / back with the maker / approved /
+    onboarding      submitted / resubmitted for review, round N (vendor.submitted_at, and audit_log submitted / resubmitted
+                    for the earlier rounds); with the maker / with the checker / back with the maker / approved /
                     not approved / agreement to sign (vendor.status, the stage it is in now); sent to the checker,
                     approved, returned to the maker, not approved, corrected by the maker, documents added, customer
-                    account set up in SAP (audit_log, entity vendor, written by the review app); returned to you for
-                    correction, by role (vendor_rejection)
+                    account set up in SAP (audit_log, entity vendor, written by LAS through las_integration.py and by the
+                    review app); returned to you for correction, by role (vendor_rejection): "Corrections required", with
+                    the reviewer's remark to the customer, while it is open
     agreement       issued, signed, declined, withdrawn (agreement_event)
     invoices        uploaded (invoices.created_at); with the maker / checker / authorizer, approved (audit_log status_changed
                     and invoices.status now); returned to you or to the maker, and not approved, with who did it by role
@@ -115,7 +117,7 @@ CURRENT_STAGE = {
     "01": ("checker", "pending", "Your application is with the checker for approval", "update"),
     "sent for approval": ("checker", "pending", "Your application is with the checker for approval", "update"),
     "returned_to_maker": ("maker", "back", "Your application is back with the maker for correction", "update"),
-    "returned": ("returned", "back", "Your application needs your corrections", "action"),
+    "returned": ("returned", "back", "Corrections required", "action"),
     # Not here: the older review app's "Returned to Vendor" and "Pending Correction", which the portal treats as closed
     # (auth.stage_for: rejected, nothing to edit), so the bell does not ask for corrections the customer cannot make;
     # their dated return still shows.
@@ -129,7 +131,8 @@ CURRENT_STAGE = {
 }
 # The review app's audit_log actions on a vendor that are a stage of the application (everything else stays internal).
 VENDOR_ACTIONS = ("approval_recorded", "returned_to_maker", "rejected", "returned", "returned_for_correction", "corrected",
-                  "documents_uploaded", "sap_business_partner_created")
+                  "documents_uploaded", "sap_business_partner_created", "submitted", "resubmitted")
+REMARK_CHARS = 160  # the reviewer's note on an open return, as the bell shows it (the form shows it in full)
 # approval_recorded, by the status it moved the application to.
 APPROVALS = {
     "01": ("checker", "pending", "Your application was sent to the checker for approval"),
@@ -154,10 +157,19 @@ def _onboarding_reader(cursor, vendor_id):
 
 def _rejections_reader(cursor, vendor_id):
     cursor.execute(
-        "SELECT rejection_id, round_no, rejected_by_role, rejected_at, resubmitted_at FROM vendor_rejection WHERE vendor_id = %s",
+        "SELECT rejection_id, round_no, rejected_by_role, overall_remark, rejected_at, resubmitted_at FROM vendor_rejection WHERE vendor_id = %s",
         (vendor_id,),
     )
     return cursor.fetchall()
+
+
+def _submitted_title(round_no):
+    return f"Resubmitted for review, round {round_no}" if round_no > 1 else "Your application was submitted"
+
+
+def _remark(value):
+    text = " ".join(str(value or "").split())
+    return text if len(text) <= REMARK_CHARS else text[:REMARK_CHARS - 1].rstrip() + "…"
 
 
 def onboarding_items(records, rejections, stage, today):
@@ -167,9 +179,8 @@ def onboarding_items(records, rejections, stage, today):
     round_no = vendor.get("submission_round") or 1
     events = []
     if vendor.get("submitted_at") and status != "registered":
-        title = "Your corrected application was submitted" if round_no > 1 else "Your application was submitted"
-        events.append(_item(f"onb-submitted-r{round_no}", "onboarding", "submitted", "pending", title, _day(vendor["submitted_at"]), to,
-                            [f"Round {round_no}" if round_no > 1 else None], at=_at(vendor["submitted_at"])))
+        events.append(_item(f"onb-submitted-r{round_no}", "onboarding", "submitted", "pending", _submitted_title(round_no),
+                            _day(vendor["submitted_at"]), to, at=_at(vendor["submitted_at"])))
     return_days = set()
     open_return = False
     for r in rejections or []:
@@ -178,8 +189,11 @@ def onboarding_items(records, rejections, stage, today):
         open_return = open_return or is_open
         on = _day(r["rejected_at"])
         return_days.add(on)
-        events.append(_item(f"onb-returned-{r['rejection_id']}", "onboarding", "returned", "back", "Your application was returned to you for correction",
-                            on, to, [_by(role), f"Round {r['round_no']}" if r.get("round_no") else None],
+        # While it is open it asks for the corrections, with the reviewer's note to the customer; afterwards it is history.
+        title = "Corrections required" if is_open else "Your application was returned to you for correction"
+        note = _remark(r.get("overall_remark")) if is_open else None
+        events.append(_item(f"onb-returned-{r['rejection_id']}", "onboarding", "returned", "back", title,
+                            on, to, [d for d in (note, _by(role), f"Round {r['round_no']}" if r.get("round_no") else None) if d],
                             kind="action" if is_open else "update", at=_at(r["rejected_at"]), pinned=is_open))
     approved_seen = False
     sap_on = None
@@ -188,7 +202,12 @@ def onboarding_items(records, rejections, stage, today):
         after_status = str(after.get("status") or "").strip().lower() if isinstance(after, dict) else ""
         on, at, role = _day(a["created_at"]), _at(a["created_at"]), _role(a.get("actor"))
         item_id, action = f"onb-a{a['id']}", a["action"]
-        if action == "approval_recorded" and after_status in APPROVALS:
+        if action in ("submitted", "resubmitted"):
+            # An earlier round's submit (the vendor row only has the latest); the same id as that round's item, so never twice.
+            n = after.get("round") if isinstance(after, dict) else None
+            if isinstance(n, int) and n != round_no:
+                events.append(_item(f"onb-submitted-r{n}", "onboarding", "submitted", "pending", _submitted_title(n), on, to, at=at))
+        elif action == "approval_recorded" and after_status in APPROVALS:
             stage_key, tone, title = APPROVALS[after_status]
             approved_seen = approved_seen or after_status == "active"
             events.append(_item(item_id, "onboarding", stage_key, tone, title, on, to, [_by(role)], at=at))
